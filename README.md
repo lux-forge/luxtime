@@ -93,6 +93,16 @@ pwsh .\scripts\status.ps1                # check service, Docker, API, and tray 
 `stop.ps1` writes `.runtime/intentional-stop`, so an installed watchdog
 won't immediately restart LuxTime; `start.ps1` clears that marker.
 
+## Privacy & security
+
+No data leaves your machine, no accounts, no telemetry. LuxTime has no
+multi-tenant or authentication model because there's nothing to authenticate
+against remotely — every port it opens (the web UI, the API, PostgreSQL in
+dev mode) binds only to `127.0.0.1`. The only outbound network access
+involved is Docker Compose pulling/building images and Docker Desktop's own
+updates; the running application itself talks to nothing but its own local
+PostgreSQL container.
+
 ## Architecture
 
 - `app/` — FastAPI, domain services, Foundry-backed PostgreSQL access, and the
@@ -194,3 +204,12 @@ This removes the service and the current user's tray registration and, by
 default, intentionally stops the Compose stack. Persistent PostgreSQL data is
 not deleted. Lock/unlock, sleep/resume, and idle detection remain intentionally
 deferred.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for scope, dev setup, and PR
+expectations.
+
+## License
+
+[MIT](LICENSE) &copy; LuxForge
