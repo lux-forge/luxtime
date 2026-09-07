@@ -14,11 +14,6 @@ web/dist/
 web/.vite/
 *.tsbuildinfo
 
-# Local configuration and secrets
-.env
-.env.*
-!.env.example
-
 # Runtime state
 .runtime/
 logs/

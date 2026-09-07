@@ -68,11 +68,6 @@ the tray for the current user's Startup folder. See
 [docs/windows-lifecycle.md](docs/windows-lifecycle.md) for component-specific
 commands, startup/recovery behavior, logs, and the reboot/sign-in checklist.
 
-Before either path, copy `.env.example` to `.env` and change
-`POSTGRES_PASSWORD` before ongoing use — Compose's defaults are intentionally
-local-only, and the example password is not appropriate outside a local
-developer machine.
-
 ## How do I run it?
 
 Once installed, LuxTime runs itself: the service keeps the application
@@ -135,7 +130,7 @@ python -m venv .venv
 Start PostgreSQL, rebuild the schema, and run the API on development port 52023:
 
 ```powershell
-docker compose -f .\docker\compose.yml -f .\docker\compose.dev.yml up -d postgres
+docker compose -f .\docker\compose.yml up -d postgres
 pwsh .\db\rebuild\rebuild.ps1 -Confirm:$false
 $env:LUXTIME_DB_PORT = '54329'
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 52023 --reload
@@ -156,9 +151,8 @@ and container build):
 pwsh .\scripts\build.ps1
 ```
 
-The development override is what exposes PostgreSQL on localhost port 54329;
-the normal production-shaped stack has no database host binding. With that
-override running, include integration tests with:
+PostgreSQL is always published on localhost port 54329 — there's no separate
+dev/prod Compose mode. With it running, include integration tests with:
 
 ```powershell
 $env:LUXTIME_RUN_INTEGRATION = '1'

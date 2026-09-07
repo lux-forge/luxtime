@@ -6,15 +6,17 @@ services:
     container_name: luxtime-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-luxtime}
-      POSTGRES_USER: ${POSTGRES_USER:-luxtime}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-luxtime_dev}
+      POSTGRES_DB: luxtime
+      POSTGRES_USER: luxtime
+      POSTGRES_PASSWORD: luxtime_dev
+    ports:
+      - "127.0.0.1:54329:5432"
     volumes:
       - luxtime-postgres-data:/var/lib/postgresql/data
       - ../db:/db:ro
       - ../db/backups:/backups
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U luxtime -d luxtime"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -23,20 +25,22 @@ services:
 
   app:
     build:
-      context: ..
-      dockerfile: docker/app/Dockerfile
+      context: .
+      dockerfile: app/Dockerfile
+      additional_contexts:
+        repo: ..
     container_name: luxtime-app
     restart: unless-stopped
     environment:
-      LUXTIME_DB_NAME: ${POSTGRES_DB:-luxtime}
-      LUXTIME_DB_USER: ${POSTGRES_USER:-luxtime}
-      LUXTIME_DB_PASSWORD: ${POSTGRES_PASSWORD:-luxtime_dev}
+      LUXTIME_DB_NAME: luxtime
+      LUXTIME_DB_USER: luxtime
+      LUXTIME_DB_PASSWORD: luxtime_dev
       LUXTIME_DB_HOST: postgres
       LUXTIME_DB_PORT: 5432
       LUXTIME_WEB_DIST: /opt/luxtime/web-dist
       LOG_DIR: /var/log/luxtime
-      LOGLEVEL: ${LUXTIME_LOG_LEVEL:-INFO}
-      CONSOLE_LOG_LEVEL: ${LUXTIME_LOG_LEVEL:-INFO}
+      LOGLEVEL: INFO
+      CONSOLE_LOG_LEVEL: INFO
     depends_on:
       postgres:
         condition: service_healthy

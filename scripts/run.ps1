@@ -23,6 +23,16 @@ if (Test-Path -LiteralPath $stopMarker) {
     Remove-Item -LiteralPath $stopMarker -Force
 }
 
+# Postgres is started on its own first: bringing the whole stack up in one
+# `compose up -d` on a cold start (no containers exist yet) races Compose's
+# own dependency-wait logic against Postgres's own container creation and can
+# silently drop Postgres's published port. Creating Postgres by itself first
+# sidesteps that race; the second call then finds it already running.
+& $dockerCommand.Source compose --project-directory $repositoryRoot -f $composeFile up -d postgres
+if ($LASTEXITCODE -ne 0) {
+    throw "LuxTime Postgres startup failed with exit code $LASTEXITCODE."
+}
+
 $arguments = @('compose', '--project-directory', $repositoryRoot, '-f', $composeFile, 'up', '-d')
 if (-not $NoBuild) {
     $arguments += '--build'
@@ -55,4 +65,20 @@ do {
 if (-not $healthy) {
     throw "LuxTime containers started, but the API did not become healthy within $WaitSeconds seconds."
 }
+
+# Compose's dependency-wait/recreate logic can, on rare occasions, still
+# recreate Postgres while reconciling the full stack and drop its published
+# port even though the two-step startup above avoids the common case. Since
+# native (non-Docker) development and integration tests need that port,
+# verify it and force one targeted recreate if it's missing - this never
+# touches data (the named volume is untouched by a container recreate).
+$postgresPort = & $dockerCommand.Source port luxtime-postgres 5432 2>$null
+if (-not $postgresPort) {
+    Write-Output 'Postgres port publish was dropped during startup; recreating it...'
+    & $dockerCommand.Source compose --project-directory $repositoryRoot -f $composeFile up -d --force-recreate postgres
+    if ($LASTEXITCODE -ne 0) {
+        throw "Recreating LuxTime Postgres failed with exit code $LASTEXITCODE."
+    }
+}
+
 Write-Output 'LuxTime: http://127.0.0.1:52020'

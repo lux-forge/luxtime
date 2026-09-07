@@ -1,4 +1,0 @@
-services:
-  postgres:
-    ports:
-      - "127.0.0.1:${LUXTIME_POSTGRES_PORT:-54329}:5432"

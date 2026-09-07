@@ -76,6 +76,16 @@ def test_recovery_uses_production_compose_file_and_configured_engine(tmp_path: P
         str(config.compose_file),
         "up",
         "-d",
+        "postgres",
+    ]
+    assert calls[1] == [
+        "compose",
+        "--project-directory",
+        str(watchdog_module.REPOSITORY_ROOT),
+        "-f",
+        str(config.compose_file),
+        "up",
+        "-d",
     ]
     assert watchdog._docker_command(["info"]) == [
         r"C:\Docker\docker.exe",

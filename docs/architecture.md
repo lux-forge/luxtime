@@ -83,8 +83,8 @@ separate lifecycle signals and only their state transitions are logged.
 
 `luxtime-postgres` stores data in a named volume. `luxtime-app` connects over an
 internal Compose network and serves API plus frontend at `127.0.0.1:52020`.
-The base production-shaped Compose file does not publish PostgreSQL. The
-`compose.dev.yml` override adds an opt-in localhost-only binding on port 54329.
+PostgreSQL is also published at `127.0.0.1:54329` unconditionally — there is
+no separate dev/prod Compose mode.
 
 ## Deferred native events
 
