@@ -159,27 +159,6 @@ class LuxTimeWatchdog:
         if not docker_ready and not self.docker_available():
             return False
         log.info("Ensuring LuxTime Compose stack is running")
-        # Postgres is brought up on its own first: a cold `compose up -d` for
-        # the whole stack races Compose's dependency-wait logic against
-        # Postgres's own container creation and can silently drop Postgres's
-        # published port. Creating it by itself first avoids that race; the
-        # second call then finds it already running.
-        postgres_result = self._run_docker(
-            [
-                "compose",
-                "--project-directory",
-                str(REPOSITORY_ROOT),
-                "-f",
-                str(self.config.compose_file),
-                "up",
-                "-d",
-                "postgres",
-            ],
-            timeout=180,
-        )
-        if postgres_result.returncode != 0:
-            log.error("LuxTime Postgres startup failed", exit_code=postgres_result.returncode)
-            return False
         result = self._run_docker(
             [
                 "compose",
