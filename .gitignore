@@ -1,0 +1,6 @@
+# Ignore hidden directories
+/.*
+
+
+# Allow this file
+!/.gitignore

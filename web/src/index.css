@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@theme inline {
+  --color-background: #0C0C10;
+  --color-surface: #131318;
+  --color-surface-raised: #1A1A22;
+  --color-surface-hover: #20202A;
+  --color-border: #22222E;
+  --color-border-subtle: #1A1A24;
+  --color-text: #E2E2EC;
+  --color-muted: #5A5A72;
+  --color-muted-bright: #8080A0;
+  --color-primary: #22D3EE;
+  --color-primary-dim: #0E7490;
+  --color-active: #34D399;
+  --color-active-dim: #065F46;
+  --color-danger: #F87171;
+  --color-amber: #FBBF24;
+  --font-sans: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+a,
+button:not(:disabled),
+[role="button"],
+label[for],
+input[type="radio"],
+input[type="checkbox"] {
+  cursor: pointer;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
+/* Active pulse animation */
+@keyframes pulse-active {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.pulse-dot {
+  animation: pulse-active 2s ease-in-out infinite;
+}
+
+/* Timer glow */
+.timer-glow {
+  text-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
+}
+
+.timer-glow-green {
+  text-shadow: 0 0 20px rgba(52, 211, 153, 0.25);
+}
