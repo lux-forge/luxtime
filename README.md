@@ -1,9 +1,97 @@
 # LuxTime
 
-LuxTime is LuxForge's single-user, local time and effort accounting tool. It
-tracks one or more projects concurrently, preserves pause/resume history as
-session segments, and calculates elapsed time separately from project-attributed
-time. It is not an HR, payroll, or employee timesheet system.
+## What is this?
+
+LuxTime is LuxForge's single-user, local time and effort accounting tool.
+You start, pause, resume, and stop work sessions against one or more
+projects — including several at once — and LuxTime keeps two separate
+numbers honest: **elapsed time** (wall-clock time you were actually
+working, pauses excluded) and **project-attributed time** (the sum of time
+attributed to each project, which can exceed elapsed time when projects
+overlap). Pause/resume history is preserved as session segments rather than
+rewriting timestamps, so the record of *how* a session was worked stays
+intact, not just the total.
+
+It ships as a small local web app (React frontend, FastAPI backend,
+PostgreSQL storage) plus a Windows tray icon and background service that
+keep it running. It is not an HR, payroll, or employee timesheet system,
+and it has no multi-tenant or authentication model — every port it opens
+binds only to `127.0.0.1`.
+
+## Why does it exist?
+
+Most time trackers assume one timer at a time, or push your data to a
+cloud service you don't control. LuxTime exists for the opposite case:
+someone working across several concurrent projects on one machine, who
+wants an accurate record of both real elapsed time and per-project
+attribution, kept entirely on that machine.
+
+That local-first goal shapes the rest of the design: PostgreSQL is the only
+persistence layer (no ORM, no SQLite fallback — see
+[docs/architecture.md](docs/architecture.md)), the API is the single owner
+of business truth so the web UI and tray are both thin clients of it, and
+the Windows service/tray exist so LuxTime behaves like a normal installed
+application — available after sign-in without a manual start step — rather
+than something you remember to launch from a terminal.
+
+## How do I install it?
+
+**Recommended:** run the packaged `LuxTime-Setup.msi` (built from
+[installer/](installer/)). It bundles its own Python runtime, so nothing
+beyond Docker Desktop needs to be preinstalled. Running it installs, by
+default, all three of:
+
+- the `LuxTimeService` Windows service (delayed auto-start; keeps the local
+  Docker application healthy),
+- a Start Menu shortcut, and
+- a tray icon that starts at sign-in,
+
+and each can be unchecked during setup. Clicking the Start Menu shortcut
+starts the service if it isn't already running and opens LuxTime in your
+browser — no elevation prompt, even as a standard user.
+
+Docker Desktop must be installed and configured to start at sign-in; the
+installer detects and warns (but does not block) if it isn't found. See
+[docs/windows-lifecycle.md](docs/windows-lifecycle.md#msi-installed-machines)
+for exactly what gets installed, logs, and the uninstall/removal behavior.
+
+**From a source checkout** (development, or building the installer itself),
+install Docker Desktop, Python 3.11+, and PowerShell 7 first, then from an
+elevated PowerShell 7 terminal:
+
+```powershell
+pwsh .\scripts\install.ps1
+```
+
+This installs the same `LuxTimeService`, starts the stack, and registers
+the tray for the current user's Startup folder. See
+[docs/windows-lifecycle.md](docs/windows-lifecycle.md) for component-specific
+commands, startup/recovery behavior, logs, and the reboot/sign-in checklist.
+
+Before either path, copy `.env.example` to `.env` and change
+`POSTGRES_PASSWORD` before ongoing use — Compose's defaults are intentionally
+local-only, and the example password is not appropriate outside a local
+developer machine.
+
+## How do I run it?
+
+Once installed, LuxTime runs itself: the service keeps the application
+healthy in the background, and the tray icon (or the Start Menu shortcut)
+gets you to it. Open it directly at any time at
+<http://127.0.0.1:52020> — the API shares this origin under `/api`, with
+interactive API documentation at `/api/docs`.
+
+From a source checkout, the equivalent manual commands are:
+
+```powershell
+pwsh .\scripts\start.ps1                 # build and start the production-shaped stack
+pwsh .\scripts\stop.ps1 -Confirm:$false  # stop intentionally
+pwsh .\scripts\restart.ps1 -Confirm:$false
+pwsh .\scripts\status.ps1                # check service, Docker, API, and tray state
+```
+
+`stop.ps1` writes `.runtime/intentional-stop`, so an installed watchdog
+won't immediately restart LuxTime; `start.ps1` clears that marker.
 
 ## Architecture
 
@@ -16,63 +104,14 @@ time. It is not an HR, payroll, or employee timesheet system.
 - `docker/` — the `luxtime-app` and `luxtime-postgres` runtime.
 - `service/` — Windows lifecycle watchdog; it has no project/session logic.
 - `tray/` — interactive Windows tray client using the same API as the web UI.
+- `launcher/` — the Start Menu shortcut's target: starts the service if
+  needed and opens the browser.
+- `installer/` — builds the packaged `LuxTime-Setup.msi`.
 - `scripts/` — thin local operator commands.
 - `tests/` — domain, API-surface, and PostgreSQL integration tests.
 
 See [docs/architecture.md](docs/architecture.md) for the responsibility and
 data-flow details.
-
-## Prerequisites
-
-- Windows 11 with PowerShell 7
-- Docker Desktop with Compose
-- Python 3.11 or newer
-- Node.js 22 and pnpm for native frontend development
-
-Copy `.env.example` to `.env` and change `POSTGRES_PASSWORD` before ongoing use.
-Compose defaults are intentionally local-only, but the example password is not
-appropriate outside a local developer machine.
-
-## Install on Windows
-
-Docker Desktop must be configured to start when the user signs in. From an
-elevated PowerShell 7 terminal, install the delayed-auto-start lifecycle service,
-start the stack, and register the tray for the current user's Startup folder:
-
-```powershell
-pwsh .\scripts\install.ps1
-```
-
-The Windows service name is `LuxTimeService`. The service runs the lifecycle
-watchdog only; the interactive tray always runs in the signed-in user's session.
-See [docs/windows-lifecycle.md](docs/windows-lifecycle.md) for component-specific
-commands, startup/recovery behavior, logs, and the reboot/sign-in checklist.
-
-## Start, stop, and status
-
-Build and start the production-shaped local stack:
-
-```powershell
-pwsh .\scripts\start.ps1
-```
-
-LuxTime is then available at <http://127.0.0.1:52020>. The API shares this
-origin under `/api`; interactive API documentation is at `/api/docs`.
-
-Stop the complete stack intentionally:
-
-```powershell
-pwsh .\scripts\stop.ps1 -Confirm:$false
-```
-
-This writes `.runtime/intentional-stop`, so an installed watchdog will not
-immediately restart LuxTime. `start.ps1` clears that marker. Restart and inspect
-the complete lifecycle with:
-
-```powershell
-pwsh .\scripts\restart.ps1 -Confirm:$false
-pwsh .\scripts\status.ps1
-```
 
 ## Development
 
@@ -139,9 +178,13 @@ pwsh .\db\backup\restore.ps1 -BackupFile .\db\backups\luxtime-YYYYMMDDTHHMMSSZ.d
 
 See [db/README.md](db/README.md) before destructive database operations.
 
-## Remove the Windows installation
+## Removing LuxTime
 
-From an elevated PowerShell terminal:
+If installed via `LuxTime-Setup.msi`, uninstall it from Settings > Apps (or
+`msiexec /x`) — this stops and removes the service and both shortcuts, but
+never touches `db\backups\` contents or the PostgreSQL Docker volume.
+
+From a source checkout, from an elevated PowerShell terminal:
 
 ```powershell
 pwsh .\scripts\uninstall.ps1 -Confirm:$false

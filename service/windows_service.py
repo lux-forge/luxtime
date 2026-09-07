@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
 import sys
 import threading
 
@@ -10,12 +11,19 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
+import pywintypes
 import servicemanager
+import win32con
 import win32event
+import win32security
 import win32service
 import win32serviceutil
+import winerror
 
 from service.watchdog import LuxTimeWatchdog
+
+SERVICE_START = 0x0010
+AUTHENTICATED_USERS_SID = "S-1-5-11"
 
 
 class LuxTimeService(win32serviceutil.ServiceFramework):
@@ -47,5 +55,103 @@ class LuxTimeService(win32serviceutil.ServiceFramework):
             servicemanager.LogInfoMsg("LuxTime Service stopped")
 
 
+def _grant_authenticated_users_start_right() -> None:
+    """Add an ACE letting any signed-in user start the service without a UAC prompt.
+
+    Strictly additive: appends one ACE for Authenticated Users if an
+    equivalent one isn't already present, and never touches any other ACE.
+    This is what lets the desktop shortcut launcher (running as a standard
+    user) start the service on click.
+    """
+    sid = win32security.ConvertStringSidToSid(AUTHENTICATED_USERS_SID)
+    scm = win32service.OpenSCManager(None, None, win32service.SC_MANAGER_CONNECT)
+    try:
+        handle = win32service.OpenService(
+            scm,
+            LuxTimeService._svc_name_,
+            win32con.READ_CONTROL | win32con.WRITE_DAC,
+        )
+        try:
+            descriptor = win32service.QueryServiceObjectSecurity(
+                handle, win32security.DACL_SECURITY_INFORMATION
+            )
+            dacl = descriptor.GetSecurityDescriptorDacl()
+            already_granted = any(
+                dacl.GetAce(index)[0][0] == win32security.ACCESS_ALLOWED_ACE_TYPE
+                and dacl.GetAce(index)[2] == sid
+                and dacl.GetAce(index)[1] & SERVICE_START
+                for index in range(dacl.GetAceCount())
+            )
+            if not already_granted:
+                dacl.AddAccessAllowedAce(win32security.ACL_REVISION, SERVICE_START, sid)
+                descriptor.SetSecurityDescriptorDacl(1, dacl, 0)
+                win32service.SetServiceObjectSecurity(
+                    handle, win32security.DACL_SECURITY_INFORMATION, descriptor
+                )
+        finally:
+            win32service.CloseServiceHandle(handle)
+    finally:
+        win32service.CloseServiceHandle(scm)
+
+
+def main() -> int:
+    """Dispatch to pywin32's verbs, plus two installer-friendly idempotent ones.
+
+    ``ensure-installed``/``ensure-removed`` give the MSI custom actions a
+    single static command line that succeeds whether or not the service is
+    already in the desired state, and a real process exit code to detect
+    genuine failures (``HandleCommandLine`` alone never calls ``sys.exit``).
+    """
+    argv = list(sys.argv)
+    verb = argv[1] if len(argv) > 1 else None
+
+    if verb == "ensure-installed":
+        error_code = win32serviceutil.HandleCommandLine(
+            LuxTimeService, argv=[argv[0], "install", "--startup", "delayed"]
+        )
+        if error_code:
+            return error_code
+        _grant_authenticated_users_start_right()
+        subprocess.run(
+            [
+                "sc.exe",
+                "failure",
+                LuxTimeService._svc_name_,
+                "reset=",
+                "86400",
+                "actions=",
+                "restart/15000/restart/30000/restart/60000",
+            ],
+            check=True,
+        )
+        subprocess.run(
+            ["sc.exe", "failureflag", LuxTimeService._svc_name_, "1"], check=True
+        )
+        try:
+            win32serviceutil.StartService(LuxTimeService._svc_name_)
+        except pywintypes.error as error:
+            if error.winerror != winerror.ERROR_SERVICE_ALREADY_RUNNING:
+                raise
+        return 0
+
+    if verb == "ensure-removed":
+        try:
+            win32serviceutil.StopService(LuxTimeService._svc_name_)
+        except pywintypes.error as error:
+            if error.winerror not in (
+                winerror.ERROR_SERVICE_NOT_ACTIVE,
+                winerror.ERROR_SERVICE_DOES_NOT_EXIST,
+            ):
+                raise
+        try:
+            win32serviceutil.RemoveService(LuxTimeService._svc_name_)
+        except pywintypes.error as error:
+            if error.winerror != winerror.ERROR_SERVICE_DOES_NOT_EXIST:
+                raise
+        return 0
+
+    return win32serviceutil.HandleCommandLine(LuxTimeService, argv=argv) or 0
+
+
 if __name__ == "__main__":
-    win32serviceutil.HandleCommandLine(LuxTimeService)
+    raise SystemExit(main())

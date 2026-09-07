@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="LuxTime"
+            Manufacturer="LuxForge"
+            Version="$(var.LuxTimeVersion)"
+            UpgradeCode="2feddce2-ed70-4913-9d54-ab54c9de3f8c"
+            Scope="perMachine">
+
+    <SummaryInformation Description="LuxTime installer" Manufacturer="LuxForge" />
+    <MediaTemplate EmbedCab="yes" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of LuxTime is already installed." />
+
+    <Icon Id="LuxTimeIcon" SourceFile="assets\luxtime.ico" />
+    <Property Id="ARPPRODUCTICON" Value="LuxTimeIcon" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/" />
+    <Property Id="ARPNOREPAIR" Value="yes" />
+
+    <!-- Detect Docker Desktop at its default location (same fallback path
+         service/watchdog.py's own _default_docker_executable() uses), so we
+         can warn - never block - if it's missing. -->
+    <Property Id="DOCKER_EXE_FOUND" Secure="yes">
+      <DirectorySearch Id="ProgramFilesSearch" Path="[ProgramFiles64Folder]">
+        <DirectorySearch Id="DockerDirSearch" Path="Docker\Docker\resources\bin">
+          <FileSearch Id="DockerExeSearch" Name="docker.exe" />
+        </DirectorySearch>
+      </DirectorySearch>
+    </Property>
+
+    <CustomAction Id="SetDockerWarningText" Property="WIXUI_EXITDIALOGOPTIONALTEXT"
+                  Value="Docker Desktop was not detected at its default location. LuxTime requires Docker Desktop (or another local Docker engine) to run - install or start it, then launch LuxTime from its shortcut." />
+
+    <InstallUISequence>
+      <Custom Action="SetDockerWarningText" After="AppSearch" Condition="NOT DOCKER_EXE_FOUND" />
+    </InstallUISequence>
+
+    <!--
+      service\windows_service.py's own `ensure-installed`/`ensure-removed`
+      verbs are the single source of truth for registering the Windows
+      service (see that file): they delegate to pywin32's HandleCommandLine
+      so the MSI-installed service can never drift from the dev-checkout
+      behaviour, and they are idempotent so these custom actions are safe to
+      run on install/uninstall/repair/feature-toggle alike.
+
+      Both custom action pairs share the reserved `WixQuietExecCmdLine`
+      property that WixQuietExec reads - each pair is kept as an adjacent
+      Set-then-Exec step in InstallExecuteSequence below so nothing else can
+      clobber it in between.
+
+      NOTE: this must live directly in the Package (not an unreferenced
+      Fragment) - WiX's linker only pulls in Fragment content that something
+      else references, and nothing references a bare CustomAction/sequence
+      entry, so an unreferenced Fragment holding these would be silently
+      tree-shaken out of the compiled MSI.
+    -->
+    <CustomAction Id="SetEnsureServiceInstalledCmd" Property="WixQuietExecCmdLine"
+                  Value="&quot;[INSTALLFOLDER]python\python.exe&quot; &quot;[INSTALLFOLDER]service\windows_service.py&quot; ensure-installed" />
+    <CustomAction Id="EnsureServiceInstalled" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec"
+                  Execute="deferred" Impersonate="no" Return="check" />
+
+    <CustomAction Id="SetEnsureServiceRemovedCmd" Property="WixQuietExecCmdLine"
+                  Value="&quot;[INSTALLFOLDER]python\python.exe&quot; &quot;[INSTALLFOLDER]service\windows_service.py&quot; ensure-removed" />
+    <CustomAction Id="EnsureServiceRemoved" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec"
+                  Execute="deferred" Impersonate="no" Return="check" />
+
+    <InstallExecuteSequence>
+      <!-- Removal must run first, while the payload (and the interpreter
+           needed to talk to the SCM) still exists on disk, covering both a
+           full uninstall and the feature being unchecked in a maintenance
+           change. -->
+      <Custom Action="SetEnsureServiceRemovedCmd" Before="EnsureServiceRemoved" Condition="&amp;ServiceFeature=2" />
+      <Custom Action="EnsureServiceRemoved" Before="RemoveFiles" Condition="&amp;ServiceFeature=2" />
+
+      <!-- Install/update runs after the payload is on disk. -->
+      <Custom Action="SetEnsureServiceInstalledCmd" Before="EnsureServiceInstalled" Condition="&amp;ServiceFeature=3" />
+      <Custom Action="EnsureServiceInstalled" After="InstallFiles" Condition="&amp;ServiceFeature=3" />
+    </InstallExecuteSequence>
+
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="INSTALLFOLDER" Name="LuxTime">
+        <Directory Id="LogsFolder" Name="logs" />
+        <Directory Id="RuntimeFolder" Name=".runtime" />
+        <Directory Id="DbFolderForBackups" Name="db">
+          <Directory Id="DbBackupsFolder" Name="backups" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="LuxTimeStartMenuFolder" Name="LuxTime" />
+    </StandardDirectory>
+    <StandardDirectory Id="StartupFolder" />
+
+    <Feature Id="Core" Level="1" Display="hidden" AllowAbsent="no">
+      <ComponentGroupRef Id="CoreComponents" />
+      <ComponentGroupRef Id="RuntimeStateComponents" />
+    </Feature>
+    <Feature Id="ServiceFeature" Title="LuxTime Service" Level="1"
+              Description="Installs LuxTimeService (Automatic, Delayed Start), which keeps the local Docker application running and healthy.">
+      <ComponentGroupRef Id="ServiceComponents" />
+    </Feature>
+    <Feature Id="ShortcutFeature" Title="Start Menu Shortcut" Level="1"
+              Description="Adds a Start Menu shortcut that starts LuxTime (if needed) and opens it in your browser.">
+      <ComponentGroupRef Id="LauncherComponents" />
+    </Feature>
+    <Feature Id="TrayFeature" Title="Tray icon at sign-in" Level="1"
+              Description="Starts the LuxTime tray icon automatically when you sign in.">
+      <ComponentGroupRef Id="TrayComponents" />
+    </Feature>
+
+    <ui:WixUI Id="WixUI_FeatureTree" />
+    <WixVariable Id="WixUILicenseRtf" Value="assets\License.rtf" />
+
+  </Package>
+</Wix>

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import ctypes
+import datetime
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import threading
 import webbrowser
@@ -156,27 +159,42 @@ class TrayApplication:
                 self.icon.update_menu()
             self.stopping.wait(5)
 
-    def _stop_luxtime(self, *_: object) -> None:
-        import tkinter
-        from tkinter import messagebox
+    @staticmethod
+    def _docker_executable() -> str:
+        discovered = shutil.which("docker")
+        if discovered:
+            return discovered
+        program_files = os.getenv("ProgramFiles", r"C:\Program Files")
+        return str(Path(program_files) / "Docker" / "Docker" / "resources" / "bin" / "docker.exe")
 
-        root = tkinter.Tk()
-        root.withdraw()
-        confirmed = messagebox.askyesno(
-            "Stop LuxTime",
+    def _stop_luxtime(self, *_: object) -> None:
+        MB_YESNO = 0x00000004
+        MB_ICONQUESTION = 0x00000020
+        IDYES = 6
+        response = ctypes.windll.user32.MessageBoxW(
+            None,
             "Stop the LuxTime application and suppress watchdog restart until it is started again?",
+            "Stop LuxTime",
+            MB_YESNO | MB_ICONQUESTION,
         )
-        root.destroy()
-        if not confirmed:
+        if response != IDYES:
             return
+        runtime_root = REPOSITORY_ROOT / ".runtime"
+        runtime_root.mkdir(parents=True, exist_ok=True)
+        (runtime_root / "intentional-stop").write_text(
+            datetime.datetime.now(datetime.timezone.utc).isoformat(), encoding="utf-8"
+        )
         subprocess.run(
             [
-                "pwsh",
-                "-NoProfile",
-                "-File",
-                str(REPOSITORY_ROOT / "scripts" / "stop.ps1"),
-                "-Confirm:$false",
+                self._docker_executable(),
+                "compose",
+                "--project-directory",
+                str(REPOSITORY_ROOT),
+                "-f",
+                str(REPOSITORY_ROOT / "docker" / "compose.yml"),
+                "down",
             ],
+            cwd=REPOSITORY_ROOT,
             creationflags=subprocess.CREATE_NO_WINDOW,
             check=False,
         )

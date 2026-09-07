@@ -1,6 +1,44 @@
 # Windows lifecycle
 
-## Installed components
+## MSI-installed machines
+
+`LuxTime-Setup.msi` (built from [installer/](../installer/), see
+[installer/build.ps1](../installer/build.ps1)) is the recommended install
+path for a machine that isn't a source checkout. It installs everything
+under `%ProgramData%\LuxTime`, including a bundled, self-contained Python -
+nothing beyond Docker Desktop needs to be preinstalled.
+
+Running the installer offers three independently-uncheckable features, all
+on by default:
+
+- **LuxTime Service** - registers and starts `LuxTimeService` exactly as
+  `service\windows_service.py`'s `ensure-installed` verb would from a source
+  checkout (same delayed-auto-start and failure-recovery configuration).
+  Unchecking it means the Windows service is never created.
+- **Start Menu Shortcut** - installs a `LuxTime` shortcut that runs
+  `launcher\main.py`: it starts `LuxTimeService` if it isn't already
+  running, waits for `/api/health`, then opens `http://127.0.0.1:52020` in
+  the default browser. The service's ACL is extended at install time to let
+  any signed-in user start it, so clicking this shortcut never prompts for
+  elevation.
+- **Tray icon at sign-in** - registers the same per-user Startup-folder
+  shortcut as `tray\install-startup.ps1` does for a source checkout, for the
+  user who ran the installer.
+
+Uninstalling (`msiexec /x` or via Settings > Apps) stops and removes the
+service and both shortcuts, but never touches `db\backups\` contents or the
+`luxtime-postgres-data` Docker volume - matches
+`scripts\uninstall.ps1 -KeepRuntime` semantics on a source checkout.
+
+Docker Desktop is not bundled or required at install time: the installer
+only warns (via the finish-page text) if it isn't found at its default
+location, since `service\watchdog.py` already tolerates Docker being
+unavailable at service start with bounded retries. The first `docker compose
+up` still **builds** the application image from the installed payload (the
+same `app/`, `web/`, `docker/` source a checkout would have), so first start
+after install needs internet access and can take several minutes.
+
+## Installed components (source checkout)
 
 - `LuxTimeService` is a native Windows service configured as **Automatic
   (Delayed Start)**. It runs the lifecycle watchdog in session 0 and never owns

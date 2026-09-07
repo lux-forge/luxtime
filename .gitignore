@@ -36,3 +36,7 @@ postgres-data/
 .idea/
 .mypy_cache/
 .ruff_cache/
+
+# Installer build output
+installer/build/
+dist/

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Fragment>
+
+    <!-- Always installed: the bundled Python runtime and the Docker build
+         context (app/web/docker/db source), which service/tray/launcher and
+         `docker compose up` all need regardless of which optional features
+         are selected. -->
+    <ComponentGroup Id="CoreComponents" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PythonRuntimeDir)\**" Subdirectory="python" />
+      <Files Include="$(var.PayloadDir)\app\**" Subdirectory="app" />
+      <Files Include="$(var.PayloadDir)\web\**" Subdirectory="web" />
+      <Files Include="$(var.PayloadDir)\docker\**" Subdirectory="docker" />
+      <Files Include="$(var.PayloadDir)\db\**" Subdirectory="db" />
+      <Files Include="$(var.PayloadDir)\scripts\**" Subdirectory="scripts" />
+      <Files Include="$(var.PayloadDir)\docs\**" Subdirectory="docs" />
+      <Files Include="$(var.PayloadDir)\pyproject.toml" />
+      <Files Include="$(var.PayloadDir)\README.md" />
+    </ComponentGroup>
+
+    <!-- Empty, ACL'd folders the service/tray write into at runtime as a
+         standard (non-admin) user. Owning only the directory - never any
+         file created inside it later - matters most for db\backups, so an
+         uninstall never touches a real backup dump. -->
+    <ComponentGroup Id="RuntimeStateComponents">
+      <Component Id="LogsFolderComponent" Directory="LogsFolder" Guid="44d4a802-f010-46da-93bc-957372250cd9">
+        <CreateFolder>
+          <util:PermissionEx User="Users" GenericAll="yes" />
+        </CreateFolder>
+        <RegistryValue Root="HKLM" Key="Software\LuxTime" Name="LogsFolderInstalled" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+      <Component Id="RuntimeFolderComponent" Directory="RuntimeFolder" Guid="1f4ad900-105d-43b3-aeee-aae0ac96e606">
+        <CreateFolder>
+          <util:PermissionEx User="Users" GenericAll="yes" />
+        </CreateFolder>
+        <RegistryValue Root="HKLM" Key="Software\LuxTime" Name="RuntimeFolderInstalled" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+      <Component Id="DbBackupsFolderComponent" Directory="DbBackupsFolder" Guid="51fc813b-6148-4f1a-8f2f-ce22d580193d">
+        <CreateFolder>
+          <util:PermissionEx User="Users" GenericAll="yes" />
+        </CreateFolder>
+        <RegistryValue Root="HKLM" Key="Software\LuxTime" Name="DbBackupsFolderInstalled" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Unchecking this feature means LuxTimeService is never created -
+         see CustomActions.wxs for the install/remove custom actions. -->
+    <ComponentGroup Id="ServiceComponents" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PayloadDir)\service\**" Subdirectory="service" />
+    </ComponentGroup>
+
+    <!-- Start Menu shortcut: the click target is launcher\main.py, which
+         starts the service (if needed) and opens the browser. -->
+    <ComponentGroup Id="LauncherComponents" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PayloadDir)\launcher\**" Subdirectory="launcher" />
+      <Component Id="StartMenuShortcutComponent" Directory="LuxTimeStartMenuFolder" Guid="351d647c-39e0-409a-801b-be71aaebe8af">
+        <RegistryValue Root="HKCU" Key="Software\LuxTime" Name="StartMenuShortcutInstalled" Type="integer" Value="1" KeyPath="yes" />
+        <Shortcut Id="LuxTimeStartMenuShortcut" Name="LuxTime"
+                  Description="Start LuxTime and open it in your browser"
+                  Target="[INSTALLFOLDER]python\pythonw.exe" Arguments="-m launcher.main"
+                  WorkingDirectory="INSTALLFOLDER" Icon="LuxTimeIcon" />
+        <RemoveFolder Id="RemoveLuxTimeStartMenuFolder" Directory="LuxTimeStartMenuFolder" On="uninstall" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Per-user Startup-folder shortcut for the tray. The HKCU keypath is
+         what makes MSI install/remove this correctly for the installing
+         user even though the overall package is per-machine. -->
+    <ComponentGroup Id="TrayComponents" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PayloadDir)\tray\**" Subdirectory="tray" />
+      <Component Id="TrayStartupShortcutComponent" Directory="StartupFolder" Guid="ec863785-15b7-4bd2-a59e-bb20368d7701">
+        <RegistryValue Root="HKCU" Key="Software\LuxTime" Name="TrayStartupInstalled" Type="integer" Value="1" KeyPath="yes" />
+        <Shortcut Id="LuxTimeTrayStartupShortcut" Name="LuxTime Tray"
+                  Description="LuxTime interactive system tray application"
+                  Target="[INSTALLFOLDER]python\pythonw.exe" Arguments="-m tray.main"
+                  WorkingDirectory="INSTALLFOLDER" Icon="LuxTimeIcon" />
+      </Component>
+    </ComponentGroup>
+
+  </Fragment>
+</Wix>
