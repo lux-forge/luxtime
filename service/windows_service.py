@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 from pathlib import Path
 import subprocess
 import sys
 import threading
+import traceback
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
@@ -94,6 +97,26 @@ def _grant_authenticated_users_start_right() -> None:
         win32service.CloseServiceHandle(scm)
 
 
+def _log_install_result(verb: str, captured_output: str, error: BaseException | None) -> None:
+    """Write a readable record of an `ensure-installed`/`ensure-removed` failure.
+
+    The MSI custom action host (WixQuietExec) captures this process's output
+    through a codepage conversion that garbles it in the msiexec log, and a
+    failed install execute sequence removes this action's own just-installed
+    files afterward - so this deliberately writes next to (not inside)
+    REPOSITORY_ROOT, outside the install tree MSI owns and cleans up.
+    """
+    log_path = REPOSITORY_ROOT.parent / "LuxTime-install-error.log"
+    with log_path.open("a", encoding="utf-8") as handle:
+        handle.write(f"--- {verb} failed ---\n")
+        if captured_output:
+            handle.write(captured_output)
+            if not captured_output.endswith("\n"):
+                handle.write("\n")
+        if error is not None:
+            traceback.print_exception(type(error), error, error.__traceback__, file=handle)
+
+
 def main() -> int:
     """Dispatch to pywin32's verbs, plus two installer-friendly idempotent ones.
 
@@ -105,52 +128,67 @@ def main() -> int:
     argv = list(sys.argv)
     verb = argv[1] if len(argv) > 1 else None
 
-    if verb == "ensure-installed":
-        error_code = win32serviceutil.HandleCommandLine(
-            LuxTimeService, argv=[argv[0], "install", "--startup", "delayed"]
-        )
-        if error_code:
-            return error_code
-        _grant_authenticated_users_start_right()
-        subprocess.run(
-            [
-                "sc.exe",
-                "failure",
-                LuxTimeService._svc_name_,
-                "reset=",
-                "86400",
-                "actions=",
-                "restart/15000/restart/30000/restart/60000",
-            ],
-            check=True,
-        )
-        subprocess.run(
-            ["sc.exe", "failureflag", LuxTimeService._svc_name_, "1"], check=True
-        )
+    if verb in ("ensure-installed", "ensure-removed"):
+        captured = io.StringIO()
         try:
-            win32serviceutil.StartService(LuxTimeService._svc_name_)
-        except pywintypes.error as error:
-            if error.winerror != winerror.ERROR_SERVICE_ALREADY_RUNNING:
-                raise
-        return 0
-
-    if verb == "ensure-removed":
-        try:
-            win32serviceutil.StopService(LuxTimeService._svc_name_)
-        except pywintypes.error as error:
-            if error.winerror not in (
-                winerror.ERROR_SERVICE_NOT_ACTIVE,
-                winerror.ERROR_SERVICE_DOES_NOT_EXIST,
-            ):
-                raise
-        try:
-            win32serviceutil.RemoveService(LuxTimeService._svc_name_)
-        except pywintypes.error as error:
-            if error.winerror != winerror.ERROR_SERVICE_DOES_NOT_EXIST:
-                raise
-        return 0
+            with contextlib.redirect_stdout(captured), contextlib.redirect_stderr(captured):
+                result = _ensure_installed() if verb == "ensure-installed" else _ensure_removed()
+        except (Exception, SystemExit) as error:  # noqa: BLE001 - must still fail the MSI custom action
+            _log_install_result(verb, captured.getvalue(), error)
+            raise
+        if result:
+            _log_install_result(verb, captured.getvalue(), None)
+        return result
 
     return win32serviceutil.HandleCommandLine(LuxTimeService, argv=argv) or 0
+
+
+def _ensure_installed() -> int:
+    # Options must precede the verb - win32serviceutil.HandleCommandLine uses
+    # plain getopt, which stops parsing options at the first positional
+    # argument, so "install --startup delayed" silently drops --startup.
+    error_code = win32serviceutil.HandleCommandLine(
+        LuxTimeService, argv=[sys.argv[0], "--startup", "delayed", "install"]
+    )
+    if error_code:
+        return error_code
+    _grant_authenticated_users_start_right()
+    subprocess.run(
+        [
+            "sc.exe",
+            "failure",
+            LuxTimeService._svc_name_,
+            "reset=",
+            "86400",
+            "actions=",
+            "restart/15000/restart/30000/restart/60000",
+        ],
+        check=True,
+    )
+    subprocess.run(["sc.exe", "failureflag", LuxTimeService._svc_name_, "1"], check=True)
+    try:
+        win32serviceutil.StartService(LuxTimeService._svc_name_)
+    except pywintypes.error as error:
+        if error.winerror != winerror.ERROR_SERVICE_ALREADY_RUNNING:
+            raise
+    return 0
+
+
+def _ensure_removed() -> int:
+    try:
+        win32serviceutil.StopService(LuxTimeService._svc_name_)
+    except pywintypes.error as error:
+        if error.winerror not in (
+            winerror.ERROR_SERVICE_NOT_ACTIVE,
+            winerror.ERROR_SERVICE_DOES_NOT_EXIST,
+        ):
+            raise
+    try:
+        win32serviceutil.RemoveService(LuxTimeService._svc_name_)
+    except pywintypes.error as error:
+        if error.winerror != winerror.ERROR_SERVICE_DOES_NOT_EXIST:
+            raise
+    return 0
 
 
 if __name__ == "__main__":

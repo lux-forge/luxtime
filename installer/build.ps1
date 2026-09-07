@@ -39,14 +39,23 @@ $pyprojectVersion = (Select-String -LiteralPath (Join-Path $repositoryRoot 'pypr
 
 $outDir = Split-Path -Parent $OutFile
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+$OutFile = (Resolve-Path -LiteralPath $outDir).Path | Join-Path -ChildPath (Split-Path -Leaf $OutFile)
 
-wix build (Join-Path $PSScriptRoot 'Product.wxs') (Join-Path $PSScriptRoot 'Components.wxs') `
-    -ext WixToolset.Util.wixext -ext WixToolset.UI.wixext `
-    -d LuxTimeVersion=$pyprojectVersion `
-    -d PayloadDir=$payloadDir `
-    -d PythonRuntimeDir=$pythonRuntimeDir `
-    -arch x64 `
-    -out $OutFile
-if ($LASTEXITCODE -ne 0) { throw 'wix build failed.' }
+# Product.wxs/Components.wxs reference assets\... with paths relative to the
+# installer\ folder, so wix build must run from there.
+Push-Location $PSScriptRoot
+try {
+    wix build 'Product.wxs' 'Components.wxs' `
+        -ext WixToolset.Util.wixext -ext WixToolset.UI.wixext `
+        -d LuxTimeVersion=$pyprojectVersion `
+        -d PayloadDir=$payloadDir `
+        -d PythonRuntimeDir=$pythonRuntimeDir `
+        -arch x64 `
+        -out $OutFile
+    if ($LASTEXITCODE -ne 0) { throw 'wix build failed.' }
+}
+finally {
+    Pop-Location
+}
 
 Write-Output "LuxTime installer built at $OutFile"

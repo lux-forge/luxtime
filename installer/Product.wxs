@@ -44,10 +44,16 @@
       behaviour, and they are idempotent so these custom actions are safe to
       run on install/uninstall/repair/feature-toggle alike.
 
-      Both custom action pairs share the reserved `WixQuietExecCmdLine`
-      property that WixQuietExec reads - each pair is kept as an adjacent
-      Set-then-Exec step in InstallExecuteSequence below so nothing else can
-      clobber it in between.
+      WixQuietExec is a *deferred* custom action here (it needs to run
+      elevated, after InstallFiles), so MSI's own CustomActionData channel -
+      not the `WixQuietExecCmdLine` property name - is what actually reaches
+      it at execution time. That channel is populated from a property whose
+      name matches the deferred action's own Id, snapshotted at the moment
+      that action is scheduled - so each "Set*Cmd" action's Property MUST be
+      the exact Id of the deferred action that consumes it (confirmed against
+      WiX's own qtexecca.cpp BuildCommandLine(): it reads "CustomActionData"
+      whenever running deferred/rollback/commit, and only falls back to a
+      literal `WixQuietExecCmdLine` property for an *immediate* invocation).
 
       NOTE: this must live directly in the Package (not an unreferenced
       Fragment) - WiX's linker only pulls in Fragment content that something
@@ -55,14 +61,38 @@
       entry, so an unreferenced Fragment holding these would be silently
       tree-shaken out of the compiled MSI.
     -->
-    <CustomAction Id="SetEnsureServiceInstalledCmd" Property="WixQuietExecCmdLine"
+    <CustomAction Id="SetEnsureServiceInstalledCmd" Property="EnsureServiceInstalled"
                   Value="&quot;[INSTALLFOLDER]python\python.exe&quot; &quot;[INSTALLFOLDER]service\windows_service.py&quot; ensure-installed" />
     <CustomAction Id="EnsureServiceInstalled" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec"
                   Execute="deferred" Impersonate="no" Return="check" />
 
-    <CustomAction Id="SetEnsureServiceRemovedCmd" Property="WixQuietExecCmdLine"
+    <CustomAction Id="SetEnsureServiceRemovedCmd" Property="EnsureServiceRemoved"
                   Value="&quot;[INSTALLFOLDER]python\python.exe&quot; &quot;[INSTALLFOLDER]service\windows_service.py&quot; ensure-removed" />
     <CustomAction Id="EnsureServiceRemoved" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec"
+                  Execute="deferred" Impersonate="no" Return="check" />
+
+    <!--
+      tray\startup_shortcut.py owns creating/removing the per-user Startup
+      shortcut directly (see that file for why): WiX's native Shortcut table
+      resolves the per-user Startup folder correctly on install but not on
+      removal for a per-user resource in a per-machine package, silently
+      leaving the shortcut behind on uninstall.
+
+      The install action is deferred-but-impersonated (Impersonate="yes",
+      the default - left unset here) so %APPDATA% still resolves to the
+      installing user, while still running after InstallFiles so the
+      interpreter it needs actually exists on disk. Removal is elevated
+      (Impersonate="no") since the uninstalling user may differ from - and
+      lack file rights into - the profile of whoever originally installed it.
+    -->
+    <CustomAction Id="SetInstallTrayShortcutCmd" Property="InstallTrayStartupShortcut"
+                  Value="&quot;[INSTALLFOLDER]python\python.exe&quot; &quot;[INSTALLFOLDER]tray\startup_shortcut.py&quot; install" />
+    <CustomAction Id="InstallTrayStartupShortcut" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec"
+                  Execute="deferred" Return="check" />
+
+    <CustomAction Id="SetRemoveTrayShortcutCmd" Property="RemoveTrayStartupShortcut"
+                  Value="&quot;[INSTALLFOLDER]python\python.exe&quot; &quot;[INSTALLFOLDER]tray\startup_shortcut.py&quot; remove" />
+    <CustomAction Id="RemoveTrayStartupShortcut" BinaryRef="Wix4UtilCA_X64" DllEntry="WixQuietExec"
                   Execute="deferred" Impersonate="no" Return="check" />
 
     <InstallExecuteSequence>
@@ -72,10 +102,14 @@
            change. -->
       <Custom Action="SetEnsureServiceRemovedCmd" Before="EnsureServiceRemoved" Condition="&amp;ServiceFeature=2" />
       <Custom Action="EnsureServiceRemoved" Before="RemoveFiles" Condition="&amp;ServiceFeature=2" />
+      <Custom Action="SetRemoveTrayShortcutCmd" Before="RemoveTrayStartupShortcut" Condition="&amp;TrayFeature=2" />
+      <Custom Action="RemoveTrayStartupShortcut" Before="RemoveFiles" Condition="&amp;TrayFeature=2" />
 
       <!-- Install/update runs after the payload is on disk. -->
       <Custom Action="SetEnsureServiceInstalledCmd" Before="EnsureServiceInstalled" Condition="&amp;ServiceFeature=3" />
       <Custom Action="EnsureServiceInstalled" After="InstallFiles" Condition="&amp;ServiceFeature=3" />
+      <Custom Action="SetInstallTrayShortcutCmd" Before="InstallTrayStartupShortcut" Condition="&amp;TrayFeature=3" />
+      <Custom Action="InstallTrayStartupShortcut" After="InstallFiles" Condition="&amp;TrayFeature=3" />
     </InstallExecuteSequence>
 
     <StandardDirectory Id="CommonAppDataFolder">

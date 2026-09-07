@@ -64,17 +64,17 @@
       </Component>
     </ComponentGroup>
 
-    <!-- Per-user Startup-folder shortcut for the tray. The HKCU keypath is
-         what makes MSI install/remove this correctly for the installing
-         user even though the overall package is per-machine. -->
+    <!-- Per-user Startup-folder shortcut for the tray. The actual .lnk file
+         is created/removed by tray\startup_shortcut.py (see the custom
+         actions in Product.wxs) rather than WiX's native Shortcut table,
+         because that table resolves the per-user Startup folder correctly
+         on install but not on removal for a per-user resource in a
+         per-machine package. This HKCU-keypath component just tracks
+         TrayFeature's install state for ARP/repair bookkeeping. -->
     <ComponentGroup Id="TrayComponents" Directory="INSTALLFOLDER">
       <Files Include="$(var.PayloadDir)\tray\**" Subdirectory="tray" />
       <Component Id="TrayStartupShortcutComponent" Directory="StartupFolder" Guid="ec863785-15b7-4bd2-a59e-bb20368d7701">
         <RegistryValue Root="HKCU" Key="Software\LuxTime" Name="TrayStartupInstalled" Type="integer" Value="1" KeyPath="yes" />
-        <Shortcut Id="LuxTimeTrayStartupShortcut" Name="LuxTime Tray"
-                  Description="LuxTime interactive system tray application"
-                  Target="[INSTALLFOLDER]python\pythonw.exe" Arguments="-m tray.main"
-                  WorkingDirectory="INSTALLFOLDER" Icon="LuxTimeIcon" />
       </Component>
     </ComponentGroup>
 
