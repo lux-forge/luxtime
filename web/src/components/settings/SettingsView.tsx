@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
-import type { Settings, ActiveTimer } from '../../App'
+import type { Settings, ActiveTimer, ApplicationStatus } from '../../App'
 import ActiveBar from '../layout/ActiveBar'
 
 type Props = {
   settings: Settings
-  setSettings: (s: Settings) => void
+  onUpdate: <K extends keyof Settings>(key: K, value: Settings[K]) => void
+  appStatus: ApplicationStatus
   activeTimers: ActiveTimer[]
   onNavigateTimer: () => void
 }
@@ -73,10 +74,20 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-export default function SettingsView({ settings, setSettings, activeTimers, onNavigateTimer }: Props) {
+export default function SettingsView({ settings, onUpdate, appStatus, activeTimers, onNavigateTimer }: Props) {
   function update<K extends keyof Settings>(key: K, value: Settings[K]) {
-    setSettings({ ...settings, [key]: value })
+    onUpdate(key, value)
   }
+
+  const engineHealthy = appStatus === 'ready' || appStatus === 'tracking' || appStatus === 'paused'
+  const engineLabel = {
+    connecting: 'LuxTime Engine connecting',
+    unavailable: 'LuxTime Engine unavailable',
+    degraded: 'LuxTime Engine degraded',
+    ready: 'LuxTime Engine ready',
+    tracking: 'LuxTime Engine tracking',
+    paused: 'LuxTime Engine tracking paused',
+  }[appStatus]
 
   return (
     <div className="h-full flex flex-col">
@@ -205,13 +216,13 @@ export default function SettingsView({ settings, setSettings, activeTimers, onNa
         <Section title="Engine Health">
           <div className="py-3">
             <div className="flex items-center gap-2 mb-2">
-              <span style={{ color: 'var(--color-muted)', fontSize: 8 }}>●</span>
-              <span className="text-sm font-medium" style={{ color: 'var(--color-muted-bright)' }}>
-                LuxTime Engine not connected
+              <span style={{ color: engineHealthy ? 'var(--color-active)' : 'var(--color-danger)', fontSize: 8 }}>●</span>
+              <span className="text-sm font-medium" style={{ color: engineHealthy ? 'var(--color-text)' : 'var(--color-danger)' }}>
+                {engineLabel}
               </span>
             </div>
             <p className="text-xs mb-3" style={{ color: 'var(--color-muted)' }}>
-              Background engine integration is not configured in this frontend baseline.
+              The interface reads this state from the local FastAPI engine and PostgreSQL database.
             </p>
             <div className="flex gap-2">
               <button

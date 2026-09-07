@@ -1,0 +1,2 @@
+luxforge==0.2.0
+pywin32>=311; sys_platform == "win32"

@@ -5,12 +5,13 @@ import ActiveBar from '../layout/ActiveBar'
 
 type Props = {
   projects: Project[]
-  setProjects: (p: Project[]) => void
+  onCreate: (name: string, code: string, color: string) => void
+  onUpdate: (id: string, values: Partial<Pick<Project, 'name' | 'code' | 'color' | 'active'>>) => void
   activeTimers: ActiveTimer[]
   onNavigateTimer: () => void
 }
 
-export default function ProjectsView({ projects, setProjects, activeTimers, onNavigateTimer }: Props) {
+export default function ProjectsView({ projects, onCreate, onUpdate, activeTimers, onNavigateTimer }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [showAdd, setShowAdd] = useState(false)
@@ -25,25 +26,24 @@ export default function ProjectsView({ projects, setProjects, activeTimers, onNa
   }
 
   function saveEdit(id: string) {
-    setProjects(projects.map(p => p.id === id ? { ...p, name: editName } : p))
+    const name = editName.trim()
+    const existing = projects.find(project => project.id === id)
+    if (name && existing && name !== existing.name) onUpdate(id, { name })
     setEditingId(null)
   }
 
   function toggleActive(id: string) {
-    setProjects(projects.map(p => p.id === id ? { ...p, active: !p.active } : p))
+    const project = projects.find(item => item.id === id)
+    if (project) onUpdate(id, { active: !project.active })
   }
 
   function addProject() {
     if (!newName.trim()) return
-    const newProject: Project = {
-      id: crypto.randomUUID(),
-      name: newName.trim(),
-      code: newCode.trim().toUpperCase() || newName.slice(0, 3).toUpperCase(),
-      color: COLORS[projects.length % COLORS.length],
-      totalSeconds: 0,
-      active: true,
-    }
-    setProjects([...projects, newProject])
+    onCreate(
+      newName.trim(),
+      newCode.trim().toUpperCase() || newName.slice(0, 3).toUpperCase(),
+      COLORS[projects.length % COLORS.length],
+    )
     setNewName('')
     setNewCode('')
     setShowAdd(false)

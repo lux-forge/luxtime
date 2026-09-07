@@ -1,6 +1,38 @@
-# Ignore hidden directories
-/.*
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+.venv-*/
+*.egg-info/
 
+# Frontend
+web/node_modules/
+web/dist/
+web/.vite/
+*.tsbuildinfo
 
-# Allow this file
-!/.gitignore
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime state
+.runtime/
+logs/
+*.log
+tmp/
+
+# PostgreSQL runtime data and dumps
+db/backups/
+*.dump
+*.sql.gz
+postgres-data/
+
+# Tool caches
+.vscode/
+.idea/
+.mypy_cache/
+.ruff_cache/

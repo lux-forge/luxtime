@@ -4,7 +4,8 @@ React + Vite + Tailwind CSS frontend for LuxTime.
 
 ## Development Server
 
-Run `pnpm dev` to start the Vite development server on `$PORT` (default 8443).
+Run `pnpm dev` to start the Vite development server on `$PORT` (default 52022).
+Development API requests are proxied to `http://127.0.0.1:52023` by default.
 
 ## Project Structure
 
@@ -22,13 +23,14 @@ This is the canonical project structure. Start with task-relevant files below. O
 
 - Runtime: React 19 and React DOM 19
 - Styling: Tailwind CSS v4 with the `@tailwindcss/vite` plugin
-- Build tooling: Vite 8, TypeScript 5.7, and `@vitejs/plugin-react`
+- Build tooling: Vite 8, TypeScript 5.x, ESLint 10, and `@vitejs/plugin-react`
 - Formatting: oxfmt
 
 ## Commands
 
 - `pnpm dev` - start the development server
 - `pnpm typecheck` - type-check the frontend
+- `pnpm lint` - lint TypeScript and React hooks
 - `pnpm build` - build the frontend
 - `pnpm format` - format the codebase
 

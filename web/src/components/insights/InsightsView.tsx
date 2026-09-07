@@ -1,12 +1,15 @@
 import { useState, type ReactNode } from 'react'
-import type { HistoryEntry, ActiveTimer } from '../../App'
+import type { ActiveTimer } from '../../App'
+import type { ApiInsights, InsightPeriod } from '../../api/types'
 import { formatDuration } from '../../App'
 import ActiveBar from '../layout/ActiveBar'
 
-type Period = 'week' | 'month' | 'quarter' | 'year'
+type Period = Exclude<InsightPeriod, 'all'>
 
 type Props = {
-  history: HistoryEntry[]
+  insights: ApiInsights
+  period: Period
+  onPeriodChange: (period: Period) => void
   activeTimers: ActiveTimer[]
   onNavigateTimer: () => void
 }
@@ -35,8 +38,6 @@ type WorkTypeBucket = {
 type LengthBucket = {
   label: string
   count: number
-  minSeconds: number
-  maxSeconds: number
 }
 
 const WORK_TYPE_COLORS: Record<string, string> = {
@@ -46,73 +47,6 @@ const WORK_TYPE_COLORS: Record<string, string> = {
   Operations: '#818CF8',
   Admin: '#FBBF24',
   Business: '#C084FC',
-}
-
-function deriveStats(history: HistoryEntry[]) {
-  const attributed = history.reduce((s, e) => s + e.durationSeconds, 0)
-  const concurrentSecs = history
-    .filter(e => e.concurrent)
-    .reduce((s, e) => s + e.durationSeconds, 0)
-  const elapsed = attributed - concurrentSecs
-  const value = history.reduce((s, e) => s + (e.durationSeconds / 3600) * e.rate, 0)
-  const sessions = history.length
-  const avg = sessions > 0 ? Math.round(attributed / sessions) : 0
-  return { attributed, elapsed, concurrentSecs, value, sessions, avg }
-}
-
-function groupByDay(history: HistoryEntry[]): DayBucket[] {
-  const map = new Map<string, Map<string, { color: string; seconds: number }>>()
-  // Preserve insertion order (history is newest-first; reverse for chronological)
-  const ordered = [...history].reverse()
-  for (const e of ordered) {
-    if (!map.has(e.date)) map.set(e.date, new Map())
-    const dayMap = map.get(e.date)!
-    if (!dayMap.has(e.project)) dayMap.set(e.project, { color: e.projectColor, seconds: 0 })
-    dayMap.get(e.project)!.seconds += e.durationSeconds
-  }
-  return Array.from(map.entries()).map(([date, projectMap]) => {
-    const projects = Array.from(projectMap.entries()).map(([project, d]) => ({ project, ...d }))
-    const totalSeconds = projects.reduce((s, p) => s + p.seconds, 0)
-    return { date, totalSeconds, projects }
-  })
-}
-
-function groupByProject(history: HistoryEntry[]): ProjectBucket[] {
-  const map = new Map<string, ProjectBucket>()
-  for (const e of history) {
-    if (!map.has(e.project)) {
-      map.set(e.project, { project: e.project, color: e.projectColor, seconds: 0, value: 0 })
-    }
-    const b = map.get(e.project)!
-    b.seconds += e.durationSeconds
-    b.value += (e.durationSeconds / 3600) * e.rate
-  }
-  return Array.from(map.values()).sort((a, b) => b.seconds - a.seconds)
-}
-
-function groupByWorkType(history: HistoryEntry[]): WorkTypeBucket[] {
-  const map = new Map<string, number>()
-  for (const e of history) {
-    map.set(e.workType, (map.get(e.workType) ?? 0) + e.durationSeconds)
-  }
-  return Array.from(map.entries())
-    .map(([name, seconds]) => ({ name, color: WORK_TYPE_COLORS[name] ?? '#5A5A72', seconds }))
-    .sort((a, b) => b.seconds - a.seconds)
-}
-
-function bucketByLength(history: HistoryEntry[]): LengthBucket[] {
-  const bins: LengthBucket[] = [
-    { label: '< 30m', count: 0, minSeconds: 0, maxSeconds: 1800 },
-    { label: '30m–1h', count: 0, minSeconds: 1800, maxSeconds: 3600 },
-    { label: '1h–2h', count: 0, minSeconds: 3600, maxSeconds: 7200 },
-    { label: '2h–4h', count: 0, minSeconds: 7200, maxSeconds: 14400 },
-    { label: '4h+', count: 0, minSeconds: 14400, maxSeconds: Infinity },
-  ]
-  for (const e of history) {
-    const bin = bins.find(b => e.durationSeconds >= b.minSeconds && e.durationSeconds < b.maxSeconds)
-    if (bin) bin.count++
-  }
-  return bins
 }
 
 // ─── Chart components ────────────────────────────────────────────────────────
@@ -394,9 +328,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
 
 // ─── Main view ────────────────────────────────────────────────────────────────
 
-export default function InsightsView({ history, activeTimers, onNavigateTimer }: Props) {
-  const [period, setPeriod] = useState<Period>('week')
-
+export default function InsightsView({ insights, period, onPeriodChange, activeTimers, onNavigateTimer }: Props) {
   const periods: { id: Period; label: string }[] = [
     { id: 'week', label: 'Week' },
     { id: 'month', label: 'Month' },
@@ -404,13 +336,23 @@ export default function InsightsView({ history, activeTimers, onNavigateTimer }:
     { id: 'year', label: 'Year' },
   ]
 
-  const data = history
-
-  const { attributed, elapsed, concurrentSecs, value, sessions, avg } = deriveStats(data)
-  const days = groupByDay(data)
-  const byProject = groupByProject(data)
-  const byWorkType = groupByWorkType(data)
-  const lengthBuckets = bucketByLength(data)
+  const attributed = insights.project_attributed_seconds
+  const elapsed = insights.elapsed_seconds
+  const concurrentSecs = insights.concurrent_attribution_seconds
+  const value = insights.notional_labour_value
+  const sessions = insights.session_count
+  const avg = insights.average_session_seconds
+  const days: DayBucket[] = insights.days.map(day => ({
+    date: new Date(`${day.date}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+    totalSeconds: day.total_seconds,
+    projects: day.projects,
+  }))
+  const byProject: ProjectBucket[] = insights.projects
+  const byWorkType: WorkTypeBucket[] = insights.work_types.map(item => ({
+    ...item,
+    color: WORK_TYPE_COLORS[item.name] ?? '#5A5A72',
+  }))
+  const lengthBuckets: LengthBucket[] = insights.session_lengths
 
   const maxProjectSeconds = Math.max(...byProject.map(p => p.seconds), 1)
   const maxTypeSeconds = Math.max(...byWorkType.map(t => t.seconds), 1)
@@ -430,7 +372,7 @@ export default function InsightsView({ history, activeTimers, onNavigateTimer }:
             {periods.map(p => (
               <button
                 key={p.id}
-                onClick={() => setPeriod(p.id)}
+                onClick={() => onPeriodChange(p.id)}
                 className="px-3 py-1.5 rounded text-xs transition-all"
                 style={{
                   background: period === p.id ? 'var(--color-surface-hover)' : 'transparent',

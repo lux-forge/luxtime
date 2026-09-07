@@ -3,15 +3,16 @@ import type { HistoryEntry, ActiveTimer } from '../../App'
 import { formatDuration, calcValue } from '../../App'
 import ActiveBar from '../layout/ActiveBar'
 
-type Period = 'today' | 'week' | 'month' | 'custom'
+type Period = 'today' | 'week' | 'month' | 'all'
 
 type Props = {
   history: HistoryEntry[]
   activeTimers: ActiveTimer[]
+  onDelete: (id: string) => void
   onNavigateTimer: () => void
 }
 
-export default function HistoryView({ history, activeTimers, onNavigateTimer }: Props) {
+export default function HistoryView({ history, activeTimers, onDelete, onNavigateTimer }: Props) {
   const [period, setPeriod] = useState<Period>('week')
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
 
@@ -19,11 +20,38 @@ export default function HistoryView({ history, activeTimers, onNavigateTimer }: 
     { id: 'today', label: 'Today' },
     { id: 'week', label: 'This Week' },
     { id: 'month', label: 'This Month' },
-    { id: 'custom', label: 'Custom' },
+    { id: 'all', label: 'All' },
   ]
 
-  const totalValue = history.reduce((sum, e) => sum + (e.durationSeconds / 3600) * e.rate, 0)
-  const totalTime = history.reduce((sum, e) => sum + e.durationSeconds, 0)
+  const now = new Date()
+  const start = new Date(now)
+  if (period === 'today') start.setHours(0, 0, 0, 0)
+  if (period === 'week') {
+    start.setHours(0, 0, 0, 0)
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7))
+  }
+  if (period === 'month') {
+    start.setDate(1)
+    start.setHours(0, 0, 0, 0)
+  }
+  const entries = period === 'all' ? history : history.filter(entry => entry.startedAt >= start)
+  const totalValue = entries.reduce((sum, e) => sum + (e.durationSeconds / 3600) * e.rate, 0)
+  const totalTime = entries.reduce((sum, e) => sum + e.durationSeconds, 0)
+
+  function exportCsv() {
+    const escape = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`
+    const rows = [
+      ['Date', 'Start', 'End', 'Seconds', 'Project', 'Work type', 'Description', 'Stop reason', 'Rate'],
+      ...entries.map(entry => [entry.date, entry.start, entry.end, entry.durationSeconds, entry.project, entry.workType, entry.description, entry.stopReason, entry.rate]),
+    ]
+    const blob = new Blob([rows.map(row => row.map(escape).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `luxtime-${period}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -35,6 +63,8 @@ export default function HistoryView({ history, activeTimers, onNavigateTimer }: 
           <h1 className="text-base font-semibold" style={{ color: 'var(--color-text)' }}>History</h1>
           <div className="flex items-center gap-3">
             <button
+              onClick={exportCsv}
+              disabled={entries.length === 0}
               className="px-3 py-1.5 rounded text-xs transition-all"
               style={{
                 background: 'var(--color-surface-raised)',
@@ -45,10 +75,12 @@ export default function HistoryView({ history, activeTimers, onNavigateTimer }: 
               Export CSV
             </button>
             <button
+              disabled
+              title="Manual session entry is not available yet"
               className="px-3 py-1.5 rounded text-xs transition-all"
               style={{
                 background: 'rgba(34,211,238,0.12)',
-                color: 'var(--color-primary)',
+                color: 'var(--color-muted)',
                 border: '1px solid rgba(34,211,238,0.25)',
               }}
             >
@@ -80,7 +112,7 @@ export default function HistoryView({ history, activeTimers, onNavigateTimer }: 
         <div className="flex items-center gap-6 mb-5 px-1">
           <div>
             <div className="text-xs mb-0.5" style={{ color: 'var(--color-muted)' }}>Sessions</div>
-            <div className="text-sm font-semibold" style={{ color: 'var(--color-text)', fontFamily: 'var(--font-mono)' }}>{history.length}</div>
+            <div className="text-sm font-semibold" style={{ color: 'var(--color-text)', fontFamily: 'var(--font-mono)' }}>{entries.length}</div>
           </div>
           <div>
             <div className="text-xs mb-0.5" style={{ color: 'var(--color-muted)' }}>Total time</div>
@@ -91,7 +123,7 @@ export default function HistoryView({ history, activeTimers, onNavigateTimer }: 
             <div className="text-sm font-semibold" style={{ color: 'var(--color-text)', fontFamily: 'var(--font-mono)' }}>£{totalValue.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           </div>
           <div className="ml-auto">
-            {history.some(e => e.concurrent) && (
+            {entries.some(e => e.concurrent) && (
               <span className="text-xs px-2 py-1 rounded" style={{ background: 'rgba(251,191,36,0.1)', color: 'var(--color-amber)', border: '1px solid rgba(251,191,36,0.2)' }}>
                 Contains concurrent sessions
               </span>
@@ -126,7 +158,7 @@ export default function HistoryView({ history, activeTimers, onNavigateTimer }: 
           </div>
 
           {/* Rows */}
-          {history.map(entry => (
+          {entries.map(entry => (
             <div
               key={entry.id}
               className="grid px-4 py-2.5 text-xs transition-colors cursor-default relative"
@@ -165,13 +197,17 @@ export default function HistoryView({ history, activeTimers, onNavigateTimer }: 
                 style={{ opacity: hoveredRow === entry.id ? 1 : 0, transition: 'opacity 0.15s' }}
               >
                 <button
+                  disabled
                   className="p-0.5 rounded"
                   style={{ color: 'var(--color-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}
-                  title="Edit"
+                  title="Session editing is not available in this view yet"
                 >
                   ✎
                 </button>
                 <button
+                  onClick={() => {
+                    if (window.confirm('Delete this tracked session permanently?')) onDelete(entry.id)
+                  }}
                   className="p-0.5 rounded"
                   style={{ color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12 }}
                   title="Delete"
@@ -181,7 +217,7 @@ export default function HistoryView({ history, activeTimers, onNavigateTimer }: 
               </span>
             </div>
           ))}
-          {history.length === 0 && (
+          {entries.length === 0 && (
             <div className="px-4 py-12 text-center text-sm" style={{ color: 'var(--color-muted)' }}>
               No tracked sessions yet.
             </div>

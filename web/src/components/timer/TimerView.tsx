@@ -7,10 +7,12 @@ type Props = {
   projects: Project[]
   onStart: (project: string, workType: WorkType, description: string) => void
   onStop: (id: string) => void
+  onPause: (id: string) => void
+  onResume: (id: string) => void
   onAddAnother: () => void
 }
 
-export default function TimerView({ activeTimers, projects, onStart, onStop, onAddAnother }: Props) {
+export default function TimerView({ activeTimers, projects, onStart, onStop, onPause, onResume, onAddAnother }: Props) {
   const isActive = activeTimers.length > 0
 
   return (
@@ -19,6 +21,8 @@ export default function TimerView({ activeTimers, projects, onStart, onStop, onA
         <ActiveTimersPanel
           timers={activeTimers}
           onStop={onStop}
+          onPause={onPause}
+          onResume={onResume}
           onAddAnother={onAddAnother}
         />
       ) : (

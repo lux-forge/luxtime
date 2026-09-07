@@ -1,0 +1,68 @@
+name: luxtime
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: luxtime-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-luxtime}
+      POSTGRES_USER: ${POSTGRES_USER:-luxtime}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-luxtime_dev}
+    volumes:
+      - luxtime-postgres-data:/var/lib/postgresql/data
+      - ../db:/db:ro
+      - ../db/backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - luxtime-internal
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/app/Dockerfile
+    container_name: luxtime-app
+    restart: unless-stopped
+    environment:
+      LUXTIME_DB_NAME: ${POSTGRES_DB:-luxtime}
+      LUXTIME_DB_USER: ${POSTGRES_USER:-luxtime}
+      LUXTIME_DB_PASSWORD: ${POSTGRES_PASSWORD:-luxtime_dev}
+      LUXTIME_DB_HOST: postgres
+      LUXTIME_DB_PORT: 5432
+      LUXTIME_WEB_DIST: /opt/luxtime/web-dist
+      LOG_DIR: /var/log/luxtime
+      LOGLEVEL: ${LUXTIME_LOG_LEVEL:-INFO}
+      CONSOLE_LOG_LEVEL: ${LUXTIME_LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:52020:52020"
+    volumes:
+      - ../logs/app:/var/log/luxtime
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:52020/api/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    networks:
+      - luxtime-internal
+
+networks:
+  luxtime-internal:
+    name: luxtime-internal
+
+volumes:
+  luxtime-postgres-data:
+    name: luxtime-postgres-data

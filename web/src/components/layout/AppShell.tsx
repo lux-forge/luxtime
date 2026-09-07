@@ -1,4 +1,4 @@
-import type { View, ActiveTimer } from '../../App'
+import type { View, ActiveTimer, ApplicationStatus } from '../../App'
 import { formatElapsed } from '../../App'
 
 type NavItem = { id: View; label: string; icon: string }
@@ -15,10 +15,26 @@ type Props = {
   view: View
   setView: (v: View) => void
   activeTimers: ActiveTimer[]
+  appStatus: ApplicationStatus
 }
 
-export default function AppShell({ view, setView, activeTimers }: Props) {
+export default function AppShell({ view, setView, activeTimers, appStatus }: Props) {
   const isTracking = activeTimers.length > 0
+  const statusLabel = {
+    connecting: 'Engine connecting',
+    unavailable: 'Engine unavailable',
+    degraded: 'Engine degraded',
+    ready: 'Engine ready',
+    tracking: 'Engine tracking',
+    paused: 'Tracking paused',
+  }[appStatus]
+  const statusColor = appStatus === 'tracking'
+    ? 'var(--color-active)'
+    : appStatus === 'paused'
+      ? 'var(--color-amber)'
+      : appStatus === 'ready'
+        ? 'var(--color-primary)'
+        : 'var(--color-danger)'
 
   return (
     <aside
@@ -47,9 +63,9 @@ export default function AppShell({ view, setView, activeTimers }: Props) {
           onClick={() => setView('timer')}
         >
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="pulse-dot" style={{ color: 'var(--color-active)', fontSize: 8 }}>●</span>
-            <span className="text-xs font-medium" style={{ color: 'var(--color-active)' }}>
-              {activeTimers.length === 1 ? activeTimers[0].project : `${activeTimers.length} active`}
+            <span className={activeTimers.some(timer => timer.status === 'running') ? 'pulse-dot' : ''} style={{ color: statusColor, fontSize: 8 }}>●</span>
+            <span className="text-xs font-medium" style={{ color: statusColor }}>
+              {activeTimers.length === 1 ? activeTimers[0].project : `${activeTimers.length} sessions`}
             </span>
           </div>
           {activeTimers.map(t => (
@@ -60,7 +76,7 @@ export default function AppShell({ view, setView, activeTimers }: Props) {
                 </span>
               )}
               <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-active)' }}>
-                {formatElapsed(t.elapsed)}
+                {t.status === 'paused' ? 'Paused · ' : ''}{formatElapsed(t.elapsed)}
               </span>
             </div>
           ))}
@@ -94,8 +110,8 @@ export default function AppShell({ view, setView, activeTimers }: Props) {
       {/* Engine status */}
       <div className="px-4 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
         <div className="flex items-center gap-2 mb-1">
-          <span style={{ color: 'var(--color-muted)', fontSize: 8 }}>●</span>
-          <span className="text-xs" style={{ color: 'var(--color-muted)', fontSize: 11 }}>Engine not connected</span>
+          <span style={{ color: statusColor, fontSize: 8 }}>●</span>
+          <span className="text-xs" style={{ color: 'var(--color-muted-bright)', fontSize: 11 }}>{statusLabel}</span>
         </div>
       </div>
     </aside>

@@ -1,0 +1,1 @@
+"""LuxTime domain rules."""

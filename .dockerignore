@@ -1,0 +1,11 @@
+.git
+.gitignore
+.venv
+.runtime
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+web/node_modules
+web/dist
+db/backups
+logs

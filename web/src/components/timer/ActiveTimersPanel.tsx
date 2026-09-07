@@ -4,26 +4,32 @@ import { formatElapsed, calcValue } from '../../App'
 type Props = {
   timers: ActiveTimer[]
   onStop: (id: string) => void
+  onPause: (id: string) => void
+  onResume: (id: string) => void
   onAddAnother: () => void
 }
 
 function TimerRow({
   timer,
   onStop,
+  onPause,
+  onResume,
   isLast,
-  showConnector,
   index,
   total,
 }: {
   timer: ActiveTimer
   onStop: (id: string) => void
+  onPause: (id: string) => void
+  onResume: (id: string) => void
   isLast: boolean
-  showConnector: boolean
   index: number
   total: number
 }) {
   const isFirst = index === 0
   const multi = total > 1
+  const isPaused = timer.status === 'paused'
+  const accent = isPaused ? 'var(--color-amber)' : 'var(--color-active)'
 
   return (
     <div className="flex">
@@ -31,7 +37,7 @@ function TimerRow({
       {multi && (
         <div className="flex flex-col items-center shrink-0" style={{ width: 28, paddingTop: 2 }}>
           {isFirst ? (
-            <span style={{ color: 'var(--color-active)', fontSize: 9 }} className="pulse-dot">●</span>
+            <span style={{ color: accent, fontSize: 9 }} className={isPaused ? '' : 'pulse-dot'}>●</span>
           ) : (
             <span style={{ color: 'var(--color-muted)', fontSize: 12 }}>└─</span>
           )}
@@ -53,7 +59,7 @@ function TimerRow({
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2">
             {!multi && (
-              <span style={{ color: 'var(--color-active)', fontSize: 8 }} className="pulse-dot">●</span>
+              <span style={{ color: accent, fontSize: 8 }} className={isPaused ? '' : 'pulse-dot'}>●</span>
             )}
             <span
               className="w-2 h-2 rounded-full"
@@ -66,14 +72,15 @@ function TimerRow({
 
           {/* Elapsed */}
           <span
-            className="text-2xl font-semibold timer-glow-green"
+            className={`text-2xl font-semibold ${isPaused ? '' : 'timer-glow-green'}`}
             style={{
               fontFamily: 'var(--font-mono)',
-              color: 'var(--color-active)',
+              color: accent,
               letterSpacing: '0.05em',
               lineHeight: 1,
             }}
           >
+            {isPaused && <span className="text-xs mr-2" style={{ letterSpacing: 0 }}>Paused</span>}
             {formatElapsed(timer.elapsed)}
           </span>
         </div>
@@ -100,6 +107,17 @@ function TimerRow({
 
         {/* Actions */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => isPaused ? onResume(timer.id) : onPause(timer.id)}
+            className="px-3 py-1 rounded text-xs font-medium transition-all"
+            style={{
+              background: isPaused ? 'rgba(52,211,153,0.12)' : 'rgba(251,191,36,0.12)',
+              color: isPaused ? 'var(--color-active)' : 'var(--color-amber)',
+              border: `1px solid ${isPaused ? 'rgba(52,211,153,0.2)' : 'rgba(251,191,36,0.2)'}`,
+            }}
+          >
+            {isPaused ? 'Resume' : 'Pause'}
+          </button>
           <button
             onClick={() => onStop(timer.id)}
             className="px-3 py-1 rounded text-xs font-medium transition-all"
@@ -143,7 +161,7 @@ function TimerRow({
   )
 }
 
-export default function ActiveTimersPanel({ timers, onStop, onAddAnother }: Props) {
+export default function ActiveTimersPanel({ timers, onStop, onPause, onResume, onAddAnother }: Props) {
   const multi = timers.length > 1
 
   return (
@@ -173,8 +191,9 @@ export default function ActiveTimersPanel({ timers, onStop, onAddAnother }: Prop
           key={timer.id}
           timer={timer}
           onStop={onStop}
+          onPause={onPause}
+          onResume={onResume}
           isLast={i === timers.length - 1}
-          showConnector={multi}
           index={i}
           total={timers.length}
         />
