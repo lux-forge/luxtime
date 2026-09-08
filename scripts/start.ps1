@@ -4,4 +4,4 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-& (Join-Path $PSScriptRoot 'run.ps1') -NoBuild:$NoBuild
+& (Join-Path $PSScriptRoot 'run.ps1') -Action $(if ($NoBuild) { 'Start' } else { 'Rebuild' })

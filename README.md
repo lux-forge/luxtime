@@ -79,6 +79,7 @@ interactive API documentation at `/api/docs`.
 From a source checkout, the equivalent manual commands are:
 
 ```powershell
+pwsh .\scripts\run.ps1                   # interactive Docker/build menu
 pwsh .\scripts\start.ps1                 # build and start the production-shaped stack
 pwsh .\scripts\stop.ps1 -Confirm:$false  # stop intentionally
 pwsh .\scripts\restart.ps1 -Confirm:$false
