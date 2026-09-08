@@ -1,7 +1,7 @@
-"""Boundary for later native Windows event delivery.
+"""Vocabulary for native Windows event delivery.
 
-The service/tray may eventually submit lock, unlock, suspend, resume, and idle
-events here. Detection is intentionally not implemented in this foundation.
+The interactive tray handles idle input detection. Lock, unlock, suspend, and
+resume delivery remain future work.
 """
 
 from typing import Literal

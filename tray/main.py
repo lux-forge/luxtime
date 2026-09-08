@@ -19,6 +19,7 @@ from PIL import Image, ImageDraw  # noqa: E402
 import pystray  # noqa: E402
 
 from tray.api_client import LuxTimeApi  # noqa: E402
+from tray.idle import IdleDetector, windows_idle_seconds  # noqa: E402
 from tray.runtime import TrayAlreadyRunningError, TrayRuntime  # noqa: E402
 
 log = logger.bind(component="luxtime.tray")
@@ -34,6 +35,8 @@ class TrayApplication:
         self.accent_color = "#22D3EE"
         self.connected = False
         self.connection_reported: bool | None = None
+        self.idle_detector = IdleDetector()
+        self.idle_error_reported = False
         self.lock = threading.Lock()
         self.stopping = threading.Event()
         self.icon = pystray.Icon(
@@ -149,6 +152,10 @@ class TrayApplication:
         active = self.api.active()
         projects = self.api.projects()
         settings = self.api.settings()
+        idle_stopped = self._apply_idle_policy(settings, active)
+        if idle_stopped:
+            status = self.api.status()
+            active = self.api.active()
         application_name = settings.get("application_name", "LuxTime")
         accent_color = settings.get("accent_color", "#22D3EE")
         with self.lock:
@@ -176,6 +183,80 @@ class TrayApplication:
             self.connection_reported = self.connected
         self.icon.menu = self._build_menu()
         self.icon.update_menu()
+
+    def _apply_idle_policy(self, settings: dict, active: list[dict]) -> bool:
+        enabled = bool(settings.get("idle_detection", False))
+        threshold_minutes = int(settings.get("idle_threshold", 20))
+        running = [session for session in active if session.get("status") == "running"]
+        if not enabled:
+            self.idle_detector.check(
+                enabled=False,
+                threshold_minutes=threshold_minutes,
+                has_running_sessions=bool(running),
+                idle_seconds=0,
+            )
+            return False
+        if not running:
+            return False
+        try:
+            idle_seconds = windows_idle_seconds()
+            self.idle_error_reported = False
+        except Exception as error:  # noqa: BLE001 - a tray poll must survive native API failure
+            if not self.idle_error_reported:
+                log.warning(
+                    "Windows idle detection is unavailable",
+                    error_type=type(error).__name__,
+                )
+                self.idle_error_reported = True
+            return False
+
+        trigger = self.idle_detector.check(
+            enabled=enabled,
+            threshold_minutes=threshold_minutes,
+            has_running_sessions=bool(running),
+            idle_seconds=idle_seconds,
+        )
+        if trigger is None:
+            return False
+
+        stopped = 0
+        cutoff_at = trigger.cutoff_at.isoformat()
+        for session in running:
+            try:
+                self.api.action(
+                    str(session["id"]),
+                    "stop",
+                    at=cutoff_at,
+                    reason="idle",
+                )
+                stopped += 1
+            except Exception as error:  # noqa: BLE001 - retry remaining work on the next poll
+                log.warning(
+                    "Could not stop an idle session",
+                    session_id=str(session.get("id")),
+                    error_type=type(error).__name__,
+                )
+
+        if stopped != len(running):
+            return stopped > 0
+
+        self.idle_detector.mark_handled()
+        log.info(
+            "Stopped running sessions after Windows input became idle",
+            idle_seconds=round(trigger.idle_seconds),
+            idle_threshold_minutes=threshold_minutes,
+            session_count=stopped,
+            stopped_at=cutoff_at,
+        )
+        try:
+            self.icon.notify(
+                f"Stopped {stopped} running task{'s' if stopped != 1 else ''} after "
+                f"{threshold_minutes} minutes without mouse or keyboard input.",
+                self.application_name,
+            )
+        except Exception:  # noqa: BLE001 - notifications are optional
+            pass
+        return True
 
     def _poll(self) -> None:
         while not self.stopping.is_set():

@@ -7,12 +7,11 @@ import HistoryView from './components/history/HistoryView'
 import InsightsView from './components/insights/InsightsView'
 import ProjectsView from './components/projects/ProjectsView'
 import SettingsView from './components/settings/SettingsView'
-import IdleDialog from './components/dialogs/IdleDialog'
 import AddProjectOverlay from './components/dialogs/AddProjectOverlay'
 
 export type View = 'timer' | 'history' | 'projects' | 'insights' | 'settings'
 export type WorkType = 'Development' | 'Design' | 'Research' | 'Operations' | 'Admin' | 'Business'
-export type Dialog = 'none' | 'idle' | 'addProject'
+export type Dialog = 'none' | 'addProject'
 export type ApplicationStatus = ApiStatus['app_status'] | 'connecting' | 'unavailable'
 
 export type ActiveTimer = {
@@ -346,12 +345,6 @@ export default function App() {
         </main>
       </div>
 
-      {dialog === 'idle' && (
-        <IdleDialog activeTimers={activeTimers} idleThreshold={settings.idleThreshold}
-          onKeepAll={() => setDialog('none')}
-          onStopAll={() => { void runMutation(api.stopAll); setDialog('none') }}
-          onClose={() => setDialog('none')} />
-      )}
       {dialog === 'addProject' && (
         <AddProjectOverlay projects={projects} onStart={startTimer} onClose={() => setDialog('none')} />
       )}

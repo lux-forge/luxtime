@@ -147,5 +147,8 @@ back in, and run the same status command. The backend is service-managed and
 must remain healthy; the newly launched tray must display the state refetched
 from the API. A tray process ending at sign-out is not a backend failure.
 
-Lock/unlock, sleep/resume, and idle event detection are explicitly deferred.
-No polling or simulated Windows-event automation is implemented here.
+The interactive tray detects system-wide mouse/keyboard inactivity every five
+seconds. When **Idle Detection** is enabled, it stops running sessions at the
+configured threshold and records `idle` as the stop reason. Paused sessions are
+not changed. The tray must be running for this per-user detection to operate.
+Lock/unlock and sleep/resume event handling remain deferred.

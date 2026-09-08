@@ -43,9 +43,21 @@ class LuxTimeApi:
             payload={"project_id": project_id, "work_type": "Development", "description": ""},
         )
 
-    def action(self, session_id: str, action: str) -> dict:
+    def action(
+        self,
+        session_id: str,
+        action: str,
+        *,
+        at: str | None = None,
+        reason: str | None = None,
+    ) -> dict:
+        payload = {}
+        if at is not None:
+            payload["at"] = at
+        if reason is not None:
+            payload["reason"] = reason
         return self.request(
-            f"/api/sessions/{session_id}/{action}", method="POST", payload={}
+            f"/api/sessions/{session_id}/{action}", method="POST", payload=payload
         )
 
     def action_all(self, action: str) -> dict:

@@ -195,7 +195,7 @@ export default function SettingsView({ settings, onUpdate, appStatus }: Props) {
 
         {/* Idle Detection */}
         <Section title="Idle Detection">
-          <SettingRow label="Detect when I appear inactive">
+          <SettingRow label="Detect when I appear inactive" sub="Uses system-wide mouse and keyboard activity">
             <Toggle checked={settings.idleDetection} onChange={v => update('idleDetection', v)} />
           </SettingRow>
           <div className="py-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
@@ -221,7 +221,7 @@ export default function SettingsView({ settings, onUpdate, appStatus }: Props) {
                 />
                 <span className="text-xs" style={{ color: 'var(--color-muted)' }}>minutes</span>
               </div>
-              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>then: ask what to do</span>
+              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>then: stop running tasks</span>
             </div>
           </div>
         </Section>

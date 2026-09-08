@@ -64,6 +64,10 @@ The tray is a per-user singleton. A Startup-folder shortcut launches
 `pythonw.exe -m tray.main` in the interactive sign-in session. A named Windows
 event supports a clean `Exit Tray` request without coupling tray lifetime to the
 backend. It stores no session state; reconnecting simply refetches API state.
+Because it runs in the interactive session, the tray also reads Windows'
+system-wide last-input timestamp. When idle detection is enabled, running
+sessions are stopped once at the configured threshold using an `idle` stop
+reason; paused sessions are left unchanged.
 
 ### Windows service
 
@@ -86,8 +90,7 @@ internal Compose network and serves API plus frontend at `127.0.0.1:52020`.
 PostgreSQL is also published at `127.0.0.1:54329` unconditionally — there is
 no separate dev/prod Compose mode.
 
-## Deferred native events
+## Native events
 
-The application defines the vocabulary for lock, unlock, suspend, resume, and
-idle events. Native event detection and policies are deferred until the service
-and tray installation have been proven on the target Windows account.
+System-wide mouse/keyboard idle detection is implemented by the interactive
+tray. Lock, unlock, suspend, and resume detection remain deferred.
