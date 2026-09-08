@@ -13,7 +13,13 @@
   --color-muted: #5A5A72;
   --color-muted-bright: #8080A0;
   --color-primary: #22D3EE;
-  --color-primary-dim: #0E7490;
+  --color-primary-dim: color-mix(in srgb, var(--color-primary) 55%, black);
+  --color-primary-subtle: color-mix(in srgb, var(--color-primary) 7%, transparent);
+  --color-primary-soft: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  --color-primary-medium: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  --color-primary-emphasis: color-mix(in srgb, var(--color-primary) 25%, transparent);
+  --color-primary-border: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  --color-primary-glow: color-mix(in srgb, var(--color-primary) 30%, transparent);
   --color-active: #34D399;
   --color-active-dim: #065F46;
   --color-danger: #F87171;
@@ -76,7 +82,7 @@ input[type="checkbox"] {
 
 /* Timer glow */
 .timer-glow {
-  text-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
+  text-shadow: 0 0 20px var(--color-primary-glow);
 }
 
 .timer-glow-green {

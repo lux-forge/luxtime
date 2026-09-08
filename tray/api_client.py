@@ -33,6 +33,9 @@ class LuxTimeApi:
     def active(self) -> list[dict]:
         return self.request("/api/active")
 
+    def settings(self) -> dict:
+        return self.request("/api/settings")
+
     def start(self, project_id: str) -> dict:
         return self.request(
             "/api/sessions/start",

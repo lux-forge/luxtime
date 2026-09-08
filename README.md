@@ -89,6 +89,13 @@ pwsh .\scripts\status.ps1                # check service, Docker, API, and tray 
 `stop.ps1` writes `.runtime/intentional-stop`, so an installed watchdog
 won't immediately restart LuxTime; `start.ps1` clears that marker.
 
+## Personalise the application
+
+Open **Settings → Appearance** to change the displayed application name and
+accent colour. Both values are stored in PostgreSQL and applied to the sidebar,
+browser title, interface accents, and tray menu. Defaults remain `LuxTime` and
+`#22D3EE`.
+
 ## Privacy & security
 
 No data leaves your machine, no accounts, no telemetry. LuxTime has no

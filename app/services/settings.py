@@ -10,7 +10,8 @@ from app.models.api import SettingsPatch
 log = logger.bind(component="luxtime.settings")
 
 _SETTINGS_SELECT = """
-SELECT default_rate, stop_on_lock, stop_on_sleep, resume_prompt,
+SELECT application_name, accent_color, default_rate,
+       stop_on_lock, stop_on_sleep, resume_prompt,
        idle_detection, idle_threshold, engine_starts_with_windows,
        startup_behaviour, updated_at
 FROM luxtime.settings
@@ -31,6 +32,8 @@ class SettingsService:
     def update(self, payload: SettingsPatch) -> dict:
         requested = payload.model_dump(exclude_unset=True)
         columns = {
+            "application_name": "application_name",
+            "accent_color": "accent_color",
             "default_rate": "default_rate",
             "stop_on_lock": "stop_on_lock",
             "stop_on_sleep": "stop_on_sleep",

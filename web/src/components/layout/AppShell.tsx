@@ -15,6 +15,7 @@ type Props = {
   view: View
   setView: (v: View) => void
   activeTimers: ActiveTimer[]
+  applicationName: string
   onPause: (id: string) => void
   onResume: (id: string) => void
 }
@@ -36,7 +37,7 @@ function PlayIcon() {
   )
 }
 
-export default function AppShell({ view, setView, activeTimers, onPause, onResume }: Props) {
+export default function AppShell({ view, setView, activeTimers, applicationName, onPause, onResume }: Props) {
   const isTracking = activeTimers.length > 0
 
   return (
@@ -54,7 +55,7 @@ export default function AppShell({ view, setView, activeTimers, onPause, onResum
           LuxForge
         </div>
         <div className="text-sm font-semibold mt-0.5" style={{ color: 'var(--color-text)' }}>
-          LuxTime
+          {applicationName}
         </div>
       </div>
 
@@ -133,7 +134,7 @@ export default function AppShell({ view, setView, activeTimers, onPause, onResum
               className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
               style={{
                 color: active ? 'var(--color-primary)' : 'var(--color-muted-bright)',
-                background: active ? 'rgba(34,211,238,0.07)' : 'transparent',
+                background: active ? 'var(--color-primary-subtle)' : 'transparent',
                 borderLeft: active ? '2px solid var(--color-primary)' : '2px solid transparent',
                 fontSize: 13,
                 fontWeight: active ? 500 : 400,

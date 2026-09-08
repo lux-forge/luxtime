@@ -290,7 +290,7 @@ function StatTile({ label, value, sub, highlight }: { label: string; value: stri
       className="p-4 rounded"
       style={{
         background: 'var(--color-surface-raised)',
-        border: `1px solid ${highlight ? 'rgba(34,211,238,0.2)' : 'var(--color-border)'}`,
+        border: `1px solid ${highlight ? 'var(--color-primary-medium)' : 'var(--color-border)'}`,
       }}
     >
       <div className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>{label}</div>

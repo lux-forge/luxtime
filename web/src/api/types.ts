@@ -48,6 +48,8 @@ export type ApiSession = {
 }
 
 export type ApiSettings = {
+  application_name: string
+  accent_color: string
   default_rate: string | number
   stop_on_lock: boolean
   stop_on_sleep: boolean

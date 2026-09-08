@@ -76,20 +76,70 @@ export default function SettingsView({ settings, onUpdate, appStatus }: Props) {
     onUpdate(key, value)
   }
 
+  function saveApplicationName(input: HTMLInputElement) {
+    const value = input.value.trim()
+    if (!value) {
+      input.value = settings.applicationName
+      return
+    }
+    if (value !== settings.applicationName) update('applicationName', value)
+  }
+
   const engineHealthy = appStatus === 'ready' || appStatus === 'tracking' || appStatus === 'paused'
   const engineLabel = {
-    connecting: 'LuxTime Engine connecting',
-    unavailable: 'LuxTime Engine unavailable',
-    degraded: 'LuxTime Engine degraded',
-    ready: 'LuxTime Engine ready',
-    tracking: 'LuxTime Engine tracking',
-    paused: 'LuxTime Engine tracking paused',
+    connecting: `${settings.applicationName} Engine connecting`,
+    unavailable: `${settings.applicationName} Engine unavailable`,
+    degraded: `${settings.applicationName} Engine degraded`,
+    ready: `${settings.applicationName} Engine ready`,
+    tracking: `${settings.applicationName} Engine tracking`,
+    paused: `${settings.applicationName} Engine tracking paused`,
   }[appStatus]
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 overflow-auto px-8 py-6" style={{ maxWidth: 640 }}>
         <h1 className="text-base font-semibold mb-8" style={{ color: 'var(--color-text)' }}>Settings</h1>
+
+        <Section title="Appearance">
+          <SettingRow label="Application name" sub="Shown in the sidebar, browser title, and tray menu">
+            <input
+              type="text"
+              key={settings.applicationName}
+              defaultValue={settings.applicationName}
+              maxLength={48}
+              aria-label="Application name"
+              onBlur={event => saveApplicationName(event.currentTarget)}
+              onKeyDown={event => {
+                if (event.key === 'Enter') event.currentTarget.blur()
+                if (event.key === 'Escape') {
+                  event.currentTarget.value = settings.applicationName
+                  event.currentTarget.blur()
+                }
+              }}
+              className="outline-none text-sm px-3 py-1.5 rounded w-44"
+              style={{
+                color: 'var(--color-text)',
+                background: 'var(--color-surface-raised)',
+                border: '1px solid var(--color-border)',
+              }}
+            />
+          </SettingRow>
+          <SettingRow label="Accent colour" sub="Applied throughout the application">
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={settings.accentColor}
+                aria-label="Accent colour"
+                onChange={event => update('accentColor', event.target.value.toUpperCase())}
+                className="w-8 h-8 rounded"
+                style={{ background: 'transparent', border: 'none', padding: 0 }}
+              />
+              <span className="text-xs" style={{ color: 'var(--color-muted-bright)', fontFamily: 'var(--font-mono)' }}>
+                {settings.accentColor.toUpperCase()}
+              </span>
+            </div>
+          </SettingRow>
+        </Section>
 
         {/* Time Valuation */}
         <Section title="Time Valuation">
@@ -179,13 +229,13 @@ export default function SettingsView({ settings, onUpdate, appStatus }: Props) {
         {/* Startup & Background */}
         <Section title="Startup & Background">
           <SettingRow
-            label="LuxTime Engine starts with Windows"
+            label={`${settings.applicationName} Engine starts with Windows`}
             sub="Recommended — tracking continues even when the UI is closed"
           >
             <Toggle checked={settings.engineStartsWithWindows} onChange={v => update('engineStartsWithWindows', v)} />
           </SettingRow>
           <div className="py-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
-            <div className="text-sm mb-3" style={{ color: 'var(--color-text)' }}>Open LuxTime when I sign in</div>
+            <div className="text-sm mb-3" style={{ color: 'var(--color-text)' }}>Open {settings.applicationName} when I sign in</div>
             <div className="flex flex-col gap-2">
               {(['tray', 'compact', 'window'] as const).map(opt => (
                 <label key={opt} className="flex items-center gap-2.5 cursor-pointer">
@@ -199,7 +249,7 @@ export default function SettingsView({ settings, onUpdate, appStatus }: Props) {
                   <span className="text-sm" style={{ color: 'var(--color-muted-bright)' }}>
                     {opt === 'tray' && 'Start in tray and show "What are you working on?" prompt'}
                     {opt === 'compact' && 'Start minimised to tray only'}
-                    {opt === 'window' && 'Open main LuxTime window'}
+                    {opt === 'window' && `Open main ${settings.applicationName} window`}
                   </span>
                 </label>
               ))}

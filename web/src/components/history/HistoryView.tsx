@@ -74,9 +74,9 @@ export default function HistoryView({ history, onDelete }: Props) {
               title="Manual session entry is not available yet"
               className="px-3 py-1.5 rounded text-xs transition-all"
               style={{
-                background: 'rgba(34,211,238,0.12)',
+                background: 'var(--color-primary-soft)',
                 color: 'var(--color-muted)',
-                border: '1px solid rgba(34,211,238,0.25)',
+                border: '1px solid var(--color-primary-emphasis)',
               }}
             >
               + Add Manual Entry

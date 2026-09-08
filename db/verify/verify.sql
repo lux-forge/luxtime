@@ -22,6 +22,15 @@ BEGIN
 
     IF EXISTS (
         SELECT 1
+        FROM luxtime.settings
+        WHERE BTRIM(application_name) = ''
+           OR accent_color !~ '^#[0-9A-Fa-f]{6}$'
+    ) THEN
+        RAISE EXCEPTION 'LuxTime branding settings are invalid';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1
         FROM luxtime.work_sessions session
         LEFT JOIN luxtime.work_session_segments segment
             ON segment.session_id = session.id

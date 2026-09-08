@@ -146,6 +146,8 @@ class BulkActionResponse(StrictModel):
 
 
 class SettingsResponse(StrictModel):
+    application_name: str
+    accent_color: str
     default_rate: Decimal
     stop_on_lock: bool
     stop_on_sleep: bool
@@ -158,6 +160,8 @@ class SettingsResponse(StrictModel):
 
 
 class SettingsPatch(StrictModel):
+    application_name: str | None = Field(default=None, min_length=1, max_length=48)
+    accent_color: str | None = Field(default=None, pattern=r"^#[0-9A-Fa-f]{6}$")
     default_rate: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
     stop_on_lock: bool | None = None
     stop_on_sleep: bool | None = None
@@ -171,6 +175,9 @@ class SettingsPatch(StrictModel):
     def has_update(self) -> "SettingsPatch":
         if not self.model_fields_set:
             raise ValueError("At least one setting is required")
+        for field in ("application_name", "accent_color"):
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise ValueError(f"{field} cannot be null")
         return self
 
 

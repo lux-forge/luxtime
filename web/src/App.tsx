@@ -53,6 +53,8 @@ export type Project = {
 }
 
 export type Settings = {
+  applicationName: string
+  accentColor: string
   defaultRate: number
   stopOnLock: boolean
   stopOnSleep: boolean
@@ -128,6 +130,8 @@ const toHistoryEntry = (session: ApiSession): HistoryEntry => {
 }
 
 const toSettings = (settings: ApiSettings): Settings => ({
+  applicationName: settings.application_name,
+  accentColor: settings.accent_color,
   defaultRate: Number(settings.default_rate),
   stopOnLock: settings.stop_on_lock,
   stopOnSleep: settings.stop_on_sleep,
@@ -139,6 +143,8 @@ const toSettings = (settings: ApiSettings): Settings => ({
 })
 
 const settingNames: Record<keyof Settings, string> = {
+  applicationName: 'application_name',
+  accentColor: 'accent_color',
   defaultRate: 'default_rate',
   stopOnLock: 'stop_on_lock',
   stopOnSleep: 'stop_on_sleep',
@@ -160,6 +166,12 @@ export default function App() {
   const [appStatus, setAppStatus] = useState<ApplicationStatus>('connecting')
   const [error, setError] = useState<string | null>(null)
   const [dialog, setDialog] = useState<Dialog>('none')
+
+  useEffect(() => {
+    if (!settings) return
+    document.documentElement.style.setProperty('--color-primary', settings.accentColor)
+    document.title = settings.applicationName
+  }, [settings])
 
   const loadAll = useCallback(async () => {
     try {
@@ -293,6 +305,7 @@ export default function App() {
         view={view}
         setView={setView}
         activeTimers={activeTimers}
+        applicationName={settings.applicationName}
         onPause={id => void runMutation(() => api.pause(id))}
         onResume={id => void runMutation(() => api.resume(id))}
       />

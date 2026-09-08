@@ -30,18 +30,28 @@ class TrayApplication:
         self.api = LuxTimeApi()
         self.active: list[dict] = []
         self.projects: list[dict] = []
+        self.application_name = "LuxTime"
+        self.accent_color = "#22D3EE"
         self.connected = False
         self.connection_reported: bool | None = None
         self.lock = threading.Lock()
         self.stopping = threading.Event()
-        self.icon = pystray.Icon("LuxTime", self._icon_image(), "LuxTime")
+        self.icon = pystray.Icon(
+            "LuxTime",
+            self._icon_image(self.accent_color),
+            self.application_name,
+        )
         self.icon.menu = self._build_menu()
 
     @staticmethod
-    def _icon_image() -> Image.Image:
+    def _icon_image(accent_color: str) -> Image.Image:
+        try:
+            accent = tuple(int(accent_color[index : index + 2], 16) for index in (1, 3, 5))
+        except (TypeError, ValueError):
+            accent = (34, 211, 238)
         image = Image.new("RGBA", (64, 64), (12, 12, 16, 255))
         draw = ImageDraw.Draw(image)
-        draw.ellipse((10, 10, 54, 54), outline=(34, 211, 238, 255), width=5)
+        draw.ellipse((10, 10, 54, 54), outline=(*accent, 255), width=5)
         draw.line((32, 19, 32, 34, 43, 40), fill=(226, 226, 236, 255), width=4)
         return image
 
@@ -68,13 +78,24 @@ class TrayApplication:
         with self.lock:
             active = list(self.active)
             projects = [project for project in self.projects if project["active"]]
+            application_name = self.application_name
+
+        def start_project(project_id: str):
+            def callback(_icon, _item) -> None:
+                self._call(lambda: self.api.start(project_id))
+
+            return callback
+
+        def session_action(session_id: str, action: str):
+            def callback(_icon, _item) -> None:
+                self._call(lambda: self.api.action(session_id, action))
+
+            return callback
 
         start_items = [
             pystray.MenuItem(
                 project["name"],
-                lambda _icon, _item, project_id=str(project["id"]): self._call(
-                    lambda: self.api.start(project_id)
-                ),
+                start_project(str(project["id"])),
             )
             for project in projects
         ] or [pystray.MenuItem("No active projects", lambda *_: None, enabled=False)]
@@ -85,17 +106,13 @@ class TrayApplication:
             session_items.append(
                 pystray.MenuItem(
                     f"{action.title()} {session['project']}",
-                    lambda _icon, _item, session_id=str(session["id"]), verb=action: self._call(
-                        lambda: self.api.action(session_id, verb)
-                    ),
+                    session_action(str(session["id"]), action),
                 )
             )
             session_items.append(
                 pystray.MenuItem(
                     f"Stop {session['project']}",
-                    lambda _icon, _item, session_id=str(session["id"]): self._call(
-                        lambda: self.api.action(session_id, "stop")
-                    ),
+                    session_action(str(session["id"]), "stop"),
                 )
             )
         if not session_items:
@@ -103,7 +120,7 @@ class TrayApplication:
 
         return pystray.Menu(
             pystray.MenuItem(self._status_text(), lambda *_: None, enabled=False),
-            pystray.MenuItem("Open LuxTime", lambda *_: webbrowser.open(self.api.base_url), default=True),
+            pystray.MenuItem(f"Open {application_name}", lambda *_: webbrowser.open(self.api.base_url), default=True),
             pystray.MenuItem("Start Project", pystray.Menu(*start_items)),
             pystray.MenuItem("Active Work", pystray.Menu(*session_items)),
             pystray.Menu.SEPARATOR,
@@ -123,7 +140,7 @@ class TrayApplication:
                 enabled=bool(active),
             ),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("Stop LuxTime", self._stop_luxtime),
+            pystray.MenuItem(f"Stop {application_name}", self._stop_luxtime),
             pystray.MenuItem("Exit Tray", self._exit_tray),
         )
 
@@ -131,10 +148,26 @@ class TrayApplication:
         status = self.api.status()
         active = self.api.active()
         projects = self.api.projects()
+        settings = self.api.settings()
+        application_name = settings.get("application_name", "LuxTime")
+        accent_color = settings.get("accent_color", "#22D3EE")
         with self.lock:
+            branding_changed = (
+                application_name != self.application_name or accent_color != self.accent_color
+            )
             self.connected = status.get("database_connected", False)
             self.active = active
             self.projects = projects
+            self.application_name = application_name
+            self.accent_color = accent_color
+        if branding_changed:
+            self.icon.title = application_name
+            self.icon.icon = self._icon_image(accent_color)
+            log.info(
+                "Tray branding updated",
+                application_name=application_name,
+                accent_color=accent_color,
+            )
         if self.connected != self.connection_reported:
             if self.connected:
                 log.info("Tray connected to LuxTime API")
@@ -171,10 +204,12 @@ class TrayApplication:
         MB_YESNO = 0x00000004
         MB_ICONQUESTION = 0x00000020
         IDYES = 6
+        with self.lock:
+            application_name = self.application_name
         response = ctypes.windll.user32.MessageBoxW(
             None,
-            "Stop the LuxTime application and suppress watchdog restart until it is started again?",
-            "Stop LuxTime",
+            f"Stop {application_name} and suppress watchdog restart until it is started again?",
+            f"Stop {application_name}",
             MB_YESNO | MB_ICONQUESTION,
         )
         if response != IDYES:

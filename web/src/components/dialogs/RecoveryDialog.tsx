@@ -90,9 +90,9 @@ export default function RecoveryDialog({ sessions = [], onClose, onContinue }: P
                   onClick={() => onContinue(session.project, session.workType, session.description)}
                   className="flex-1 py-1.5 rounded text-xs"
                   style={{
-                    background: 'rgba(34,211,238,0.12)',
+                    background: 'var(--color-primary-soft)',
                     color: 'var(--color-primary)',
-                    border: '1px solid rgba(34,211,238,0.25)',
+                    border: '1px solid var(--color-primary-emphasis)',
                   }}
                 >
                   Continue Timer

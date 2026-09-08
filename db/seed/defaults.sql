@@ -7,7 +7,9 @@ INSERT INTO luxtime.settings (
     idle_detection,
     idle_threshold,
     engine_starts_with_windows,
-    startup_behaviour
+    startup_behaviour,
+    application_name,
+    accent_color
 )
-VALUES (TRUE, 50.00, TRUE, TRUE, TRUE, TRUE, 20, TRUE, 'tray')
+VALUES (TRUE, 50.00, TRUE, TRUE, TRUE, TRUE, 20, TRUE, 'tray', 'LuxTime', '#22D3EE')
 ON CONFLICT (singleton) DO NOTHING;

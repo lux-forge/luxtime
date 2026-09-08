@@ -59,9 +59,9 @@ export default function ProjectsView({ projects, onCreate, onUpdate }: Props) {
             onClick={() => setShowAdd(v => !v)}
             className="px-3 py-1.5 rounded text-xs"
             style={{
-              background: 'rgba(34,211,238,0.12)',
+              background: 'var(--color-primary-soft)',
               color: 'var(--color-primary)',
-              border: '1px solid rgba(34,211,238,0.25)',
+              border: '1px solid var(--color-primary-emphasis)',
             }}
           >
             + Add Project

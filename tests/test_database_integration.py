@@ -8,9 +8,10 @@ from fastapi.testclient import TestClient
 from app.config import AppConfig
 from app.data.database import Database
 from app.main import create_app
-from app.models.api import ProjectCreate, ProjectPatch, SessionStart
+from app.models.api import ProjectCreate, ProjectPatch, SessionStart, SettingsPatch
 from app.services.projects import ProjectService
 from app.services.sessions import SessionService
+from app.services.settings import SettingsService
 
 
 pytestmark = pytest.mark.integration
@@ -74,3 +75,22 @@ def test_health_projects_and_concurrent_session_lifecycle(database):
                 "DELETE FROM luxtime.work_sessions WHERE project_id = %s", (project_id,)
             )
             database.execute("DELETE FROM luxtime.projects WHERE id = %s", (project_id,))
+
+
+def test_branding_settings_are_persisted(database):
+    settings = SettingsService(database)
+    original = settings.get()
+    try:
+        updated = settings.update(
+            SettingsPatch(application_name="My Timer", accent_color="#A855F7")
+        )
+        assert updated["application_name"] == "My Timer"
+        assert updated["accent_color"] == "#A855F7"
+        assert settings.get()["application_name"] == "My Timer"
+    finally:
+        settings.update(
+            SettingsPatch(
+                application_name=original["application_name"],
+                accent_color=original["accent_color"],
+            )
+        )

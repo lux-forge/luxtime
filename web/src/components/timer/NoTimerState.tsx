@@ -115,9 +115,9 @@ export default function NoTimerState({ projects, onStart }: Props) {
               onClick={() => setWorkType(wt)}
               className="px-3 py-1 rounded text-xs font-medium transition-all"
               style={{
-                background: workType === wt ? 'rgba(34,211,238,0.15)' : 'var(--color-surface-raised)',
+                background: workType === wt ? 'var(--color-primary-soft)' : 'var(--color-surface-raised)',
                 color: workType === wt ? 'var(--color-primary)' : 'var(--color-muted-bright)',
-                border: `1px solid ${workType === wt ? 'rgba(34,211,238,0.4)' : 'var(--color-border)'}`,
+                border: `1px solid ${workType === wt ? 'var(--color-primary-border)' : 'var(--color-border)'}`,
               }}
             >
               {wt}
