@@ -1,5 +1,5 @@
 export type SessionStatus = 'running' | 'paused' | 'stopped'
-export type PauseMode = 'manual' | 'away' | 'sleep'
+export type PauseMode = 'manual' | 'away' | 'sleep' | 'lock'
 export type WorkTypeName = 'Development' | 'Design' | 'Research' | 'Operations' | 'Admin' | 'Business'
 export type InsightPeriod = 'week' | 'month' | 'quarter' | 'year' | 'all'
 

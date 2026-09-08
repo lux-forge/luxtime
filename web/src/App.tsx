@@ -25,7 +25,7 @@ export type ActiveTimer = {
   elapsed: number
   rate: number
   status: 'running' | 'paused'
-  pauseMode: 'manual' | 'away' | 'sleep' | null
+  pauseMode: 'manual' | 'away' | 'sleep' | 'lock' | null
 }
 
 export type HistoryEntry = {

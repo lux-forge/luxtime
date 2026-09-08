@@ -57,6 +57,15 @@ function AwayIcon({ size = 12 }: IconProps) {
   )
 }
 
+function LockIcon({ size = 12 }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.75" y="7" width="10.5" height="7" rx="1.5" />
+      <path d="M5.25 7V5a2.75 2.75 0 0 1 5.5 0v2M8 10v1.5" />
+    </svg>
+  )
+}
+
 export default function AppShell({ view, setView, activeTimers, applicationName, onPause, onResume }: Props) {
   const isTracking = activeTimers.length > 0
 
@@ -100,6 +109,7 @@ export default function AppShell({ view, setView, activeTimers, applicationName,
                 manual: { label: 'Paused', accent: 'var(--color-amber)', background: <PauseIcon size={48} /> },
                 sleep: { label: 'Sleeping', accent: '#60A5FA', background: <SleepIcon size={48} /> },
                 away: { label: 'Away', accent: '#F59E0B', background: <AwayIcon size={48} /> },
+                lock: { label: 'Locked', accent: '#A78BFA', background: <LockIcon size={48} /> },
               }[mode]
               return (
                 <div

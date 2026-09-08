@@ -22,6 +22,7 @@ from tray.api_client import LuxTimeApi  # noqa: E402
 from tray.idle import IdleDetector, windows_idle_seconds  # noqa: E402
 from tray.power import PowerEvent, WindowsPowerMonitor  # noqa: E402
 from tray.runtime import TrayAlreadyRunningError, TrayRuntime  # noqa: E402
+from tray.session_events import SessionEvent, WindowsSessionMonitor  # noqa: E402
 
 log = logger.bind(component="luxtime.tray")
 
@@ -40,8 +41,10 @@ class TrayApplication:
         self.idle_error_reported = False
         self.away_prompted_ids: set[str] = set()
         self.pending_sleep_at: datetime.datetime | None = None
+        self.pending_lock_at: datetime.datetime | None = None
         self.power_lock = threading.Lock()
         self.power_monitor = WindowsPowerMonitor(self._on_power_event)
+        self.session_monitor = WindowsSessionMonitor(self._on_session_event)
         self.lock = threading.Lock()
         self.stopping = threading.Event()
         self.icon = pystray.Icon(
@@ -70,8 +73,11 @@ class TrayApplication:
         paused = sum(1 for session in self.active if session["status"] == "paused")
         sleeping = sum(1 for session in self.active if session.get("pause_mode") == "sleep")
         away = sum(1 for session in self.active if session.get("pause_mode") == "away")
+        locked = sum(1 for session in self.active if session.get("pause_mode") == "lock")
         if running:
             return f"● Tracking · {running} project{'s' if running != 1 else ''}"
+        if locked:
+            return f"▣ Locked · {locked} project{'s' if locked != 1 else ''}"
         if sleeping:
             return f"☾ Sleeping · {sleeping} project{'s' if sleeping != 1 else ''}"
         if away:
@@ -166,6 +172,10 @@ class TrayApplication:
         settings = self.api.settings()
         sleep_paused = self._apply_sleep_policy(settings, active)
         if sleep_paused:
+            status = self.api.status()
+            active = self.api.active()
+        lock_paused = self._apply_lock_policy(settings, active)
+        if lock_paused:
             status = self.api.status()
             active = self.api.active()
         away_changed = self._apply_away_policy(settings, active)
@@ -315,6 +325,53 @@ class TrayApplication:
         else:
             log.info("Windows resume detected")
 
+    def _on_session_event(self, event: SessionEvent) -> None:
+        if event == "lock":
+            with self.power_lock:
+                if self.pending_lock_at is None:
+                    self.pending_lock_at = datetime.datetime.now(datetime.timezone.utc)
+            log.info("Windows session lock detected")
+        else:
+            log.info("Windows session unlock detected")
+
+    def _apply_lock_policy(self, settings: dict, active: list[dict]) -> bool:
+        with self.power_lock:
+            locked_at = self.pending_lock_at
+        if locked_at is None:
+            return False
+        if not settings.get("stop_on_lock", False):
+            with self.power_lock:
+                self.pending_lock_at = None
+            return False
+
+        running = [session for session in active if session.get("status") == "running"]
+        paused = 0
+        for session in running:
+            try:
+                self.api.action(
+                    str(session["id"]),
+                    "pause",
+                    at=locked_at.isoformat(),
+                    mode="lock",
+                )
+                paused += 1
+            except Exception as error:  # noqa: BLE001 - retry after unlock or on the next poll
+                log.warning(
+                    "Could not lock a running session",
+                    session_id=str(session.get("id")),
+                    error_type=type(error).__name__,
+                )
+
+        if paused == len(running):
+            with self.power_lock:
+                self.pending_lock_at = None
+            log.info(
+                "Paused running sessions for Windows lock",
+                session_count=paused,
+                paused_at=locked_at.isoformat(),
+            )
+        return paused > 0
+
     def _apply_sleep_policy(self, settings: dict, active: list[dict]) -> bool:
         with self.power_lock:
             suspend_at = self.pending_sleep_at
@@ -422,12 +479,18 @@ class TrayApplication:
             log.info("Windows power-event monitoring started")
         except Exception as error:  # noqa: BLE001 - tray and away detection remain useful
             log.warning("Windows power-event monitoring is unavailable", error_type=type(error).__name__)
+        try:
+            self.session_monitor.start()
+            log.info("Windows lock-event monitoring started")
+        except Exception as error:  # noqa: BLE001 - tray and other native detection remain useful
+            log.warning("Windows lock-event monitoring is unavailable", error_type=type(error).__name__)
         threading.Thread(target=self._poll, name="luxtime-tray-poll", daemon=True).start()
         log.info("LuxTime tray started")
         try:
             self.icon.run()
         finally:
             self.stopping.set()
+            self.session_monitor.close()
             self.power_monitor.close()
             self.runtime.close()
             log.info("LuxTime tray stopped")

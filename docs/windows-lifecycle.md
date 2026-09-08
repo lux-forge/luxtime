@@ -155,5 +155,10 @@ return displays one native Windows **Unpause timer?** prompt for every away task
 The tray also subscribes to native Windows suspend/resume notifications. When
 **Put active timers to sleep** is enabled, a suspend pauses running sessions at
 the event timestamp in `sleep` mode. Sleep-paused sessions remain paused after
-wake until resumed from their controller. The tray must be running for both
-per-user policies. Lock/unlock handling remains deferred.
+wake until resumed from their controller.
+
+The tray registers for native Windows session-change notifications. When
+**Lock active timers when Windows locks** is enabled, locking the current
+session pauses running sessions at the event timestamp in `lock` mode. They
+remain paused after unlock until resumed from their controller. The tray must
+be running for all per-user policies.

@@ -174,8 +174,8 @@ export default function SettingsView({ settings, onUpdate, appStatus }: Props) {
         {/* Automatic Tracking */}
         <Section title="Automatic Tracking">
           <SettingRow
-            label="Stop active timers when Windows locks"
-            sub="All active sessions stop using the lock timestamp"
+            label="Lock active timers when Windows locks"
+            sub="Pauses tracking with a distinct lock state until manually resumed"
           >
             <Toggle checked={settings.stopOnLock} onChange={v => update('stopOnLock', v)} />
           </SettingRow>
@@ -184,12 +184,6 @@ export default function SettingsView({ settings, onUpdate, appStatus }: Props) {
             sub="Pauses tracking with a distinct sleep state; also applies on hibernate"
           >
             <Toggle checked={settings.stopOnSleep} onChange={v => update('stopOnSleep', v)} />
-          </SettingRow>
-          <SettingRow
-            label="Ask which previous projects to resume on unlock"
-            sub="Works with multiple concurrent projects"
-          >
-            <Toggle checked={settings.resumePrompt} onChange={v => update('resumePrompt', v)} />
           </SettingRow>
         </Section>
 

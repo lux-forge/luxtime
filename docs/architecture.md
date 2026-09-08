@@ -69,7 +69,9 @@ session-specific last-input timestamp. When idle detection is enabled, running
 sessions are paused in `away` mode at the configured threshold. New input opens
 one native, global confirmation prompt to resume all away-paused sessions.
 Windows suspend notifications similarly pause running sessions in `sleep` mode;
-they remain asleep until explicitly resumed.
+they remain asleep until explicitly resumed. Native Windows session-change
+notifications pause running sessions in `lock` mode at the lock timestamp;
+unlocking does not resume them automatically.
 
 ### Windows service
 
@@ -94,5 +96,5 @@ no separate dev/prod Compose mode.
 
 ## Native events
 
-Mouse/keyboard idle and suspend/resume detection are implemented by the
-interactive tray. Lock and unlock detection remain deferred.
+Mouse/keyboard idle, session lock/unlock, and suspend/resume detection are
+implemented by the interactive tray.

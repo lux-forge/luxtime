@@ -13,7 +13,7 @@ from app.core.session_state import SessionStatus
 
 WorkType = Literal["Development", "Design", "Research", "Operations", "Admin", "Business"]
 StopReason = Literal["manual", "lock", "sleep", "idle", "shutdown", "correction", "system"]
-PauseMode = Literal["manual", "away", "sleep"]
+PauseMode = Literal["manual", "away", "sleep", "lock"]
 StartupBehaviour = Literal["tray", "compact", "window"]
 InsightPeriod = Literal["week", "month", "quarter", "year", "all"]
 

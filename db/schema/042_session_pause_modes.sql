@@ -11,6 +11,6 @@ DROP CONSTRAINT IF EXISTS work_sessions_pause_mode_matches_status;
 
 ALTER TABLE luxtime.work_sessions
 ADD CONSTRAINT work_sessions_pause_mode_matches_status CHECK (
-    (status = 'paused' AND pause_mode IN ('manual', 'away', 'sleep'))
+    (status = 'paused' AND pause_mode IN ('manual', 'away', 'sleep', 'lock'))
     OR (status <> 'paused' AND pause_mode IS NULL)
 );

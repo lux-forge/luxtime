@@ -42,8 +42,8 @@ function TimerRow({
   const isFirst = index === 0
   const multi = total > 1
   const isPaused = timer.status === 'paused'
-  const pauseLabel = timer.pauseMode === 'sleep' ? 'Sleeping' : timer.pauseMode === 'away' ? 'Away' : 'Paused'
-  const accent = timer.pauseMode === 'sleep' ? '#60A5FA' : isPaused ? 'var(--color-amber)' : 'var(--color-active)'
+  const pauseLabel = timer.pauseMode === 'sleep' ? 'Sleeping' : timer.pauseMode === 'away' ? 'Away' : timer.pauseMode === 'lock' ? 'Locked' : 'Paused'
+  const accent = timer.pauseMode === 'sleep' ? '#60A5FA' : timer.pauseMode === 'lock' ? '#A78BFA' : isPaused ? 'var(--color-amber)' : 'var(--color-active)'
   const selectableProjects = projects.filter(project => project.active || project.id === timer.projectId)
 
   function openEditor() {

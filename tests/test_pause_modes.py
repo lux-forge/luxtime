@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from app.models.api import SessionPause
 
 
-@pytest.mark.parametrize("mode", ["manual", "away", "sleep"])
+@pytest.mark.parametrize("mode", ["manual", "away", "sleep", "lock"])
 def test_session_pause_accepts_supported_modes(mode):
     assert SessionPause(mode=mode).mode == mode
 

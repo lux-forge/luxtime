@@ -1,7 +1,6 @@
 """Vocabulary for native Windows event delivery.
 
-The interactive tray handles idle input plus suspend and resume detection.
-Lock and unlock delivery remain future work.
+The interactive tray handles idle input, lock/unlock, and suspend/resume detection.
 """
 
 from typing import Literal

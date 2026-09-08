@@ -217,8 +217,8 @@ pwsh .\scripts\uninstall.ps1 -Confirm:$false
 
 This removes the service and the current user's tray registration and, by
 default, intentionally stops the Compose stack. Persistent PostgreSQL data is
-not deleted. Lock/unlock, sleep/resume, and idle detection remain intentionally
-deferred.
+not deleted. Native idle, lock/unlock, and sleep/resume handling runs in the
+per-user tray process.
 
 ## Contributing
 
