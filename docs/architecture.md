@@ -86,8 +86,22 @@ internal Compose network and serves API plus frontend at `127.0.0.1:52020`.
 PostgreSQL is also published at `127.0.0.1:54329` unconditionally — there is
 no separate dev/prod Compose mode.
 
-## Deferred native events
+## Native lock/sleep/idle events
 
-The application defines the vocabulary for lock, unlock, suspend, resume, and
-idle events. Native event detection and policies are deferred until the service
-and tray installation have been proven on the target Windows account.
+`tray/system_events.py` detects Windows session lock/unlock
+(`WM_WTSSESSION_CHANGE`), system suspend/resume (`WM_POWERBROADCAST`), and
+idle input (polled `GetLastInputInfo`) from a hidden message-only window and
+a polling thread, both running on their own background threads inside the
+tray process. Detection only runs in the tray - not the service - because
+both mechanisms require the interactive user session, which a Windows
+service (session 0) does not have.
+
+`TrayApplication` (`tray/main.py`) owns the policy: it checks the singleton
+`settings` row's `stop_on_lock` / `stop_on_sleep` / `idle_detection` before
+acting, calls `POST /api/active/stop-all` with the matching `stop_reason`
+(`lock` / `sleep` / `idle`) for whatever was running or paused, and remembers
+which projects it stopped. When the session unlocks, the system resumes, or
+input resumes after an idle stop, it checks `resume_prompt` and - if set -
+shows a native Yes/No prompt offering to start fresh sessions for those same
+projects (a stopped session is terminal; "resuming" here means starting a new
+one, not reopening the old one).

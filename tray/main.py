@@ -20,6 +20,7 @@ import pystray  # noqa: E402
 
 from tray.api_client import LuxTimeApi  # noqa: E402
 from tray.runtime import TrayAlreadyRunningError, TrayRuntime  # noqa: E402
+from tray.system_events import SystemEventMonitor  # noqa: E402
 
 log = logger.bind(component="luxtime.tray")
 
@@ -30,12 +31,24 @@ class TrayApplication:
         self.api = LuxTimeApi()
         self.active: list[dict] = []
         self.projects: list[dict] = []
+        self.settings: dict = {}
         self.connected = False
         self.connection_reported: bool | None = None
         self.lock = threading.Lock()
         self.stopping = threading.Event()
         self.icon = pystray.Icon("LuxTime", self._icon_image(), "LuxTime")
         self.icon.menu = self._build_menu()
+        self._auto_stopped_projects: dict[str, str] = {}
+        self.system_events = SystemEventMonitor(
+            on_lock=lambda: self._on_auto_stop_trigger("stop_on_lock", "lock"),
+            on_unlock=self._on_return_to_active,
+            on_suspend=lambda: self._on_auto_stop_trigger("stop_on_sleep", "sleep"),
+            on_resume=self._on_return_to_active,
+            on_idle=lambda: self._on_auto_stop_trigger("idle_detection", "idle"),
+            on_idle_ended=self._on_return_to_active,
+            idle_enabled=lambda: bool(self.settings.get("idle_detection")),
+            idle_threshold_seconds=lambda: float(self.settings.get("idle_threshold", 20)) * 60,
+        )
 
     @staticmethod
     def _icon_image() -> Image.Image:
@@ -131,10 +144,12 @@ class TrayApplication:
         status = self.api.status()
         active = self.api.active()
         projects = self.api.projects()
+        settings = self.api.settings()
         with self.lock:
             self.connected = status.get("database_connected", False)
             self.active = active
             self.projects = projects
+            self.settings = settings
         if self.connected != self.connection_reported:
             if self.connected:
                 log.info("Tray connected to LuxTime API")
@@ -158,6 +173,61 @@ class TrayApplication:
                 self.icon.menu = self._build_menu()
                 self.icon.update_menu()
             self.stopping.wait(5)
+
+    def _on_auto_stop_trigger(self, setting_name: str, reason: str) -> None:
+        with self.lock:
+            if not self.settings.get(setting_name):
+                return
+            running_or_paused = [
+                session for session in self.active if session["status"] in ("running", "paused")
+            ]
+        if not running_or_paused:
+            return
+        try:
+            self.api.stop_all(reason)
+        except Exception as error:  # noqa: BLE001 - best-effort; tray stays usable if API is down
+            log.warning(
+                "Tray failed to auto-stop sessions", reason=reason, error_type=type(error).__name__
+            )
+            return
+        with self.lock:
+            self._auto_stopped_projects.update(
+                (str(session["project_id"]), session["project"]) for session in running_or_paused
+            )
+        log.info("Tray auto-stopped active sessions", reason=reason, count=len(running_or_paused))
+        self._refresh()
+
+    def _on_return_to_active(self) -> None:
+        with self.lock:
+            projects = dict(self._auto_stopped_projects)
+            self._auto_stopped_projects.clear()
+            resume_prompt = bool(self.settings.get("resume_prompt"))
+        if not projects:
+            return
+        if not resume_prompt:
+            return
+        names = ", ".join(projects.values())
+        MB_YESNO = 0x00000004
+        MB_ICONQUESTION = 0x00000020
+        IDYES = 6
+        response = ctypes.windll.user32.MessageBoxW(
+            None,
+            f"LuxTime paused tracking while you were away. Start a new session for: {names}?",
+            "Welcome back",
+            MB_YESNO | MB_ICONQUESTION,
+        )
+        if response != IDYES:
+            return
+        for project_id in projects:
+            try:
+                self.api.start(project_id)
+            except Exception as error:  # noqa: BLE001 - best-effort; report and continue
+                log.warning(
+                    "Tray failed to restart session after return",
+                    project_id=project_id,
+                    error_type=type(error).__name__,
+                )
+        self._refresh()
 
     @staticmethod
     def _docker_executable() -> str:
@@ -207,11 +277,13 @@ class TrayApplication:
     def run(self) -> None:
         self.runtime.watch_for_exit(self._exit_tray)
         threading.Thread(target=self._poll, name="luxtime-tray-poll", daemon=True).start()
+        self.system_events.start()
         log.info("LuxTime tray started")
         try:
             self.icon.run()
         finally:
             self.stopping.set()
+            self.system_events.stop()
             self.runtime.close()
             log.info("LuxTime tray stopped")
 

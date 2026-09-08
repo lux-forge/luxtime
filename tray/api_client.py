@@ -33,6 +33,9 @@ class LuxTimeApi:
     def active(self) -> list[dict]:
         return self.request("/api/active")
 
+    def settings(self) -> dict:
+        return self.request("/api/settings")
+
     def start(self, project_id: str) -> dict:
         return self.request(
             "/api/sessions/start",
@@ -47,3 +50,8 @@ class LuxTimeApi:
 
     def action_all(self, action: str) -> dict:
         return self.request(f"/api/active/{action}-all", method="POST", payload={})
+
+    def stop_all(self, reason: str) -> dict:
+        return self.request(
+            "/api/active/stop-all", method="POST", payload={"reason": reason}
+        )

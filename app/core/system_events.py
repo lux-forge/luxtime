@@ -1,7 +1,11 @@
-"""Boundary for later native Windows event delivery.
+"""Vocabulary for native Windows lifecycle events.
 
-The service/tray may eventually submit lock, unlock, suspend, resume, and idle
-events here. Detection is intentionally not implemented in this foundation.
+Detection itself lives in `tray/system_events.py`, the only LuxTime component
+that runs continuously inside the user's interactive session (required for
+both session-lock notifications and idle-input detection). The tray acts
+directly against the existing sessions API (stop-all with a reason, then
+start) rather than submitting through a dedicated endpoint - this module just
+names the vocabulary those stop reasons and any future consumer share.
 """
 
 from typing import Literal

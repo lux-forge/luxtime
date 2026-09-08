@@ -147,5 +147,11 @@ back in, and run the same status command. The backend is service-managed and
 must remain healthy; the newly launched tray must display the state refetched
 from the API. A tray process ending at sign-out is not a backend failure.
 
-Lock/unlock, sleep/resume, and idle event detection are explicitly deferred.
-No polling or simulated Windows-event automation is implemented here.
+To verify lock/sleep/idle handling: with `stop_on_lock` enabled and a session
+running, lock the workstation (Win+L) and unlock it again - the session
+should show as stopped with reason `lock` in the UI, and (if `resume_prompt`
+is enabled) the tray should prompt to start a new one. The same applies to
+sleep/resume with `stop_on_sleep`, and to leaving the machine idle past
+`idle_threshold` minutes with `idle_detection` enabled. See
+[docs/architecture.md](architecture.md#native-locksleepidle-events) for how
+detection works.
