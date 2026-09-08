@@ -89,6 +89,10 @@ pwsh .\scripts\status.ps1                # check service, Docker, API, and tray 
 `stop.ps1` writes `.runtime/intentional-stop`, so an installed watchdog
 won't immediately restart LuxTime; `start.ps1` clears that marker.
 
+The menu's full build is non-interactive. It reinstalls frontend dependencies
+from scratch using a disposable local pnpm store, runs the explicit test suite,
+and rebuilds Docker without cached application layers.
+
 ## Personalise the application
 
 Open **Settings → Appearance** to change the displayed application name and
