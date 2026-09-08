@@ -17,6 +17,7 @@ export type ApplicationStatus = ApiStatus['app_status'] | 'connecting' | 'unavai
 
 export type ActiveTimer = {
   id: string
+  projectId: string
   project: string
   projectColor: string
   workType: WorkType
@@ -97,6 +98,7 @@ const toProject = (project: ApiProject): Project => ({
 
 const toActiveTimer = (session: ApiSession): ActiveTimer => ({
   id: session.id,
+  projectId: session.project_id,
   project: session.project,
   projectColor: session.project_color,
   workType: session.work_type,
@@ -322,6 +324,8 @@ export default function App() {
               onStop={id => void runMutation(() => api.stop(id))}
               onPause={id => void runMutation(() => api.pause(id))}
               onResume={id => void runMutation(() => api.resume(id))}
+              onUpdate={(id, values) => void runMutation(() => api.updateSession(id, values))}
+              onDelete={id => void runMutation(() => api.deleteSession(id))}
               onAddAnother={() => setDialog('addProject')} />
           )}
           {view === 'history' && (

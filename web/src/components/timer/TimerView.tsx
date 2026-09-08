@@ -9,10 +9,12 @@ type Props = {
   onStop: (id: string) => void
   onPause: (id: string) => void
   onResume: (id: string) => void
+  onUpdate: (id: string, values: { project_id?: string; description?: string }) => void
+  onDelete: (id: string) => void
   onAddAnother: () => void
 }
 
-export default function TimerView({ activeTimers, projects, onStart, onStop, onPause, onResume, onAddAnother }: Props) {
+export default function TimerView({ activeTimers, projects, onStart, onStop, onPause, onResume, onUpdate, onDelete, onAddAnother }: Props) {
   const isActive = activeTimers.length > 0
 
   return (
@@ -20,9 +22,12 @@ export default function TimerView({ activeTimers, projects, onStart, onStop, onP
       {isActive ? (
         <ActiveTimersPanel
           timers={activeTimers}
+          projects={projects}
           onStop={onStop}
           onPause={onPause}
           onResume={onResume}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
           onAddAnother={onAddAnother}
         />
       ) : (

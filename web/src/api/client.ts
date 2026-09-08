@@ -58,6 +58,8 @@ export const api = {
   pause: (id: string) => request<ApiSession>(`/sessions/${id}/pause`, { method: 'POST', body: '{}' }),
   resume: (id: string) => request<ApiSession>(`/sessions/${id}/resume`, { method: 'POST', body: '{}' }),
   stop: (id: string) => request<ApiSession>(`/sessions/${id}/stop`, { method: 'POST', body: '{}' }),
+  updateSession: (id: string, payload: { project_id?: string; description?: string }) =>
+    request<ApiSession>(`/sessions/${id}`, { method: 'PATCH', body: json(payload) }),
   pauseAll: () => request<{ sessions: ApiSession[] }>('/active/pause-all', { method: 'POST', body: '{}' }),
   resumeAll: () => request<{ sessions: ApiSession[] }>('/active/resume-all', { method: 'POST', body: '{}' }),
   stopAll: () => request<{ sessions: ApiSession[] }>('/active/stop-all', { method: 'POST', body: '{}' }),

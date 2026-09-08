@@ -1,35 +1,69 @@
-import type { ActiveTimer } from '../../App'
+import { useState } from 'react'
+import type { ActiveTimer, Project } from '../../App'
 import { formatElapsed, calcValue } from '../../App'
 
 type Props = {
   timers: ActiveTimer[]
+  projects: Project[]
   onStop: (id: string) => void
   onPause: (id: string) => void
   onResume: (id: string) => void
+  onUpdate: (id: string, values: { project_id?: string; description?: string }) => void
+  onDelete: (id: string) => void
   onAddAnother: () => void
 }
 
 function TimerRow({
   timer,
+  projects,
   onStop,
   onPause,
   onResume,
+  onUpdate,
+  onDelete,
   isLast,
   index,
   total,
 }: {
   timer: ActiveTimer
+  projects: Project[]
   onStop: (id: string) => void
   onPause: (id: string) => void
   onResume: (id: string) => void
+  onUpdate: (id: string, values: { project_id?: string; description?: string }) => void
+  onDelete: (id: string) => void
   isLast: boolean
   index: number
   total: number
 }) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [description, setDescription] = useState(timer.description)
+  const [projectId, setProjectId] = useState(timer.projectId)
   const isFirst = index === 0
   const multi = total > 1
   const isPaused = timer.status === 'paused'
   const accent = isPaused ? 'var(--color-amber)' : 'var(--color-active)'
+  const selectableProjects = projects.filter(project => project.active || project.id === timer.projectId)
+
+  function openEditor() {
+    setDescription(timer.description)
+    setProjectId(timer.projectId)
+    setIsEditing(true)
+  }
+
+  function saveChanges() {
+    const changes: { project_id?: string; description?: string } = {}
+    if (projectId !== timer.projectId) changes.project_id = projectId
+    if (description.trim() !== timer.description) changes.description = description.trim()
+    if (Object.keys(changes).length > 0) onUpdate(timer.id, changes)
+    setIsEditing(false)
+  }
+
+  function deleteTask() {
+    if (!window.confirm(`Delete the task “${timer.project}” and all of its tracked time?`)) return
+    onDelete(timer.id)
+    setIsEditing(false)
+  }
 
   return (
     <div className="flex">
@@ -132,6 +166,8 @@ function TimerRow({
             Stop
           </button>
           <button
+            onClick={() => isEditing ? setIsEditing(false) : openEditor()}
+            aria-expanded={isEditing}
             className="px-3 py-1 rounded text-xs transition-all"
             style={{
               background: 'transparent',
@@ -141,27 +177,92 @@ function TimerRow({
             onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-text)')}
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-muted-bright)')}
           >
-            Edit
-          </button>
-          <button
-            className="px-3 py-1 rounded text-xs transition-all"
-            style={{
-              background: 'transparent',
-              color: 'var(--color-muted-bright)',
-              border: '1px solid var(--color-border)',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-text)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-muted-bright)')}
-          >
-            Add Note
+            {isEditing ? 'Cancel' : 'Edit'}
           </button>
         </div>
+
+        {isEditing && (
+          <div
+            className="mt-4 rounded p-3"
+            style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)' }}
+          >
+            <div className="mb-3">
+              <label
+                className="block text-xs mb-1.5"
+                htmlFor={`task-description-${timer.id}`}
+                style={{ color: 'var(--color-muted-bright)' }}
+              >
+                Description
+              </label>
+              <textarea
+                id={`task-description-${timer.id}`}
+                value={description}
+                maxLength={2000}
+                rows={3}
+                onChange={event => setDescription(event.target.value)}
+                className="w-full px-3 py-2 rounded text-sm outline-none resize-y"
+                style={{
+                  background: 'var(--color-surface-raised)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)',
+                }}
+                placeholder="What are you working on?"
+              />
+            </div>
+
+            <div className="mb-3">
+              <label
+                className="block text-xs mb-1.5"
+                htmlFor={`task-project-${timer.id}`}
+                style={{ color: 'var(--color-muted-bright)' }}
+              >
+                Project
+              </label>
+              <select
+                id={`task-project-${timer.id}`}
+                value={projectId}
+                onChange={event => setProjectId(event.target.value)}
+                className="w-full px-3 py-2 rounded text-sm outline-none"
+                style={{
+                  background: 'var(--color-surface-raised)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text)',
+                }}
+              >
+                {selectableProjects.map(project => (
+                  <option key={project.id} value={project.id}>{project.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={saveChanges}
+                className="px-3 py-1.5 rounded text-xs font-medium"
+                style={{ background: 'var(--color-primary)', color: '#0C0C10', border: 'none' }}
+              >
+                Save changes
+              </button>
+              <button
+                onClick={deleteTask}
+                className="px-3 py-1.5 rounded text-xs font-medium ml-auto"
+                style={{
+                  background: 'rgba(248,113,113,0.12)',
+                  color: 'var(--color-danger)',
+                  border: '1px solid rgba(248,113,113,0.2)',
+                }}
+              >
+                Delete task
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-export default function ActiveTimersPanel({ timers, onStop, onPause, onResume, onAddAnother }: Props) {
+export default function ActiveTimersPanel({ timers, projects, onStop, onPause, onResume, onUpdate, onDelete, onAddAnother }: Props) {
   const multi = timers.length > 1
 
   return (
@@ -190,9 +291,12 @@ export default function ActiveTimersPanel({ timers, onStop, onPause, onResume, o
         <TimerRow
           key={timer.id}
           timer={timer}
+          projects={projects}
           onStop={onStop}
           onPause={onPause}
           onResume={onResume}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
           isLast={i === timers.length - 1}
           index={i}
           total={timers.length}
