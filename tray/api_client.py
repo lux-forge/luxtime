@@ -49,11 +49,14 @@ class LuxTimeApi:
         action: str,
         *,
         at: str | None = None,
+        mode: str | None = None,
         reason: str | None = None,
     ) -> dict:
         payload = {}
         if at is not None:
             payload["at"] = at
+        if mode is not None:
+            payload["mode"] = mode
         if reason is not None:
             payload["reason"] = reason
         return self.request(

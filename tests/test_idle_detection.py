@@ -74,7 +74,7 @@ def test_idle_detector_requires_enabled_policy_and_running_session():
     ) is None
 
 
-def test_tray_api_sends_idle_stop_timestamp_and_reason(monkeypatch):
+def test_tray_api_sends_away_pause_timestamp_and_mode(monkeypatch):
     api = LuxTimeApi()
     captured = {}
 
@@ -85,16 +85,16 @@ def test_tray_api_sends_idle_stop_timestamp_and_reason(monkeypatch):
     monkeypatch.setattr(api, "request", fake_request)
     api.action(
         "running-id",
-        "stop",
+        "pause",
         at="2026-09-08T12:20:00+00:00",
-        reason="idle",
+        mode="away",
     )
 
     assert captured == {
-        "path": "/api/sessions/running-id/stop",
+        "path": "/api/sessions/running-id/pause",
         "method": "POST",
         "payload": {
             "at": "2026-09-08T12:20:00+00:00",
-            "reason": "idle",
+            "mode": "away",
         },
     }

@@ -42,7 +42,8 @@ function TimerRow({
   const isFirst = index === 0
   const multi = total > 1
   const isPaused = timer.status === 'paused'
-  const accent = isPaused ? 'var(--color-amber)' : 'var(--color-active)'
+  const pauseLabel = timer.pauseMode === 'sleep' ? 'Sleeping' : timer.pauseMode === 'away' ? 'Away' : 'Paused'
+  const accent = timer.pauseMode === 'sleep' ? '#60A5FA' : isPaused ? 'var(--color-amber)' : 'var(--color-active)'
   const selectableProjects = projects.filter(project => project.active || project.id === timer.projectId)
 
   function openEditor() {
@@ -114,7 +115,7 @@ function TimerRow({
               lineHeight: 1,
             }}
           >
-            {isPaused && <span className="text-xs mr-2" style={{ letterSpacing: 0 }}>Paused</span>}
+            {isPaused && <span className="text-xs mr-2" style={{ letterSpacing: 0 }}>{pauseLabel}</span>}
             {formatElapsed(timer.elapsed)}
           </span>
         </div>

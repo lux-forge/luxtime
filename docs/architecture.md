@@ -65,9 +65,11 @@ The tray is a per-user singleton. A Startup-folder shortcut launches
 event supports a clean `Exit Tray` request without coupling tray lifetime to the
 backend. It stores no session state; reconnecting simply refetches API state.
 Because it runs in the interactive session, the tray also reads Windows'
-system-wide last-input timestamp. When idle detection is enabled, running
-sessions are stopped once at the configured threshold using an `idle` stop
-reason; paused sessions are left unchanged.
+session-specific last-input timestamp. When idle detection is enabled, running
+sessions are paused in `away` mode at the configured threshold. New input opens
+one native, global confirmation prompt to resume all away-paused sessions.
+Windows suspend notifications similarly pause running sessions in `sleep` mode;
+they remain asleep until explicitly resumed.
 
 ### Windows service
 
@@ -92,5 +94,5 @@ no separate dev/prod Compose mode.
 
 ## Native events
 
-System-wide mouse/keyboard idle detection is implemented by the interactive
-tray. Lock, unlock, suspend, and resume detection remain deferred.
+Mouse/keyboard idle and suspend/resume detection are implemented by the
+interactive tray. Lock and unlock detection remain deferred.

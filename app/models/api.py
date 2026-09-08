@@ -13,6 +13,7 @@ from app.core.session_state import SessionStatus
 
 WorkType = Literal["Development", "Design", "Research", "Operations", "Admin", "Business"]
 StopReason = Literal["manual", "lock", "sleep", "idle", "shutdown", "correction", "system"]
+PauseMode = Literal["manual", "away", "sleep"]
 StartupBehaviour = Literal["tray", "compact", "window"]
 InsightPeriod = Literal["week", "month", "quarter", "year", "all"]
 
@@ -89,6 +90,10 @@ class SessionAction(StrictModel):
     at: datetime | None = None
 
 
+class SessionPause(SessionAction):
+    mode: PauseMode = "manual"
+
+
 class SessionStop(SessionAction):
     reason: StopReason = "manual"
 
@@ -131,6 +136,7 @@ class SessionResponse(StrictModel):
     description: str
     hourly_rate: Decimal
     status: SessionStatus
+    pause_mode: PauseMode | None
     started_at: datetime
     stopped_at: datetime | None
     stop_reason: StopReason | None

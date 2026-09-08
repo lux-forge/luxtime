@@ -10,13 +10,13 @@ from foundry.logger import logger
 from app.core.errors import ConflictError, NotFoundError
 from app.core.session_state import SessionStatus, next_status
 from app.data.database import Database
-from app.models.api import SegmentPatch, SessionPatch, SessionStart
+from app.models.api import PauseMode, SegmentPatch, SessionPatch, SessionStart
 
 log = logger.bind(component="luxtime.sessions")
 
 _SESSION_SELECT = """
 SELECT s.id, s.project_id, p.name AS project, p.color AS project_color,
-       s.work_type, s.description, s.hourly_rate, s.status,
+       s.work_type, s.description, s.hourly_rate, s.status, s.pause_mode,
        s.started_at, s.stopped_at, s.stop_reason,
        COALESCE((
            SELECT ROUND(SUM(EXTRACT(EPOCH FROM (COALESCE(seg.ended_at, CURRENT_TIMESTAMP) - seg.started_at))))::BIGINT
@@ -135,7 +135,12 @@ class SessionService:
             raise NotFoundError("Session not found")
         return row["status"]
 
-    def pause(self, session_id: UUID, at: datetime | None = None) -> dict:
+    def pause(
+        self,
+        session_id: UUID,
+        at: datetime | None = None,
+        mode: PauseMode = "manual",
+    ) -> dict:
         paused_at = at or datetime.now(timezone.utc)
         with self.database.transaction():
             current = self._locked_status(session_id)
@@ -152,11 +157,11 @@ class SessionService:
             if segment is None:
                 raise ConflictError("Session has no open segment before the pause time")
             self.database.execute(
-                "UPDATE luxtime.work_sessions SET status = 'paused' WHERE id = %s",
-                (session_id,),
+                "UPDATE luxtime.work_sessions SET status = 'paused', pause_mode = %s WHERE id = %s",
+                (mode, session_id),
                 commit=False,
             )
-        log.info("Session paused", session_id=str(session_id))
+        log.info("Session paused", session_id=str(session_id), pause_mode=mode)
         return self.get(session_id, include_segments=True)
 
     def resume(self, session_id: UUID, at: datetime | None = None) -> dict:
@@ -176,7 +181,7 @@ class SessionService:
                 commit=False,
             )
             self.database.execute(
-                "UPDATE luxtime.work_sessions SET status = 'running' WHERE id = %s",
+                "UPDATE luxtime.work_sessions SET status = 'running', pause_mode = NULL WHERE id = %s",
                 (session_id,),
                 commit=False,
             )
@@ -215,7 +220,7 @@ class SessionService:
             self.database.execute(
                 """
                 UPDATE luxtime.work_sessions
-                SET status = 'stopped', stopped_at = %s, stop_reason = %s
+                SET status = 'stopped', stopped_at = %s, stop_reason = %s, pause_mode = NULL
                 WHERE id = %s
                 """,
                 (stopped_at, reason, session_id),
@@ -292,10 +297,14 @@ class SessionService:
                 raise NotFoundError("Session not found")
         log.info("Session deleted", session_id=str(session_id))
 
-    def pause_all(self, at: datetime | None = None) -> list[dict]:
+    def pause_all(
+        self,
+        at: datetime | None = None,
+        mode: PauseMode = "manual",
+    ) -> list[dict]:
         action_at = at or datetime.now(timezone.utc)
         sessions = self.list(status="running")
-        return [self.pause(session["id"], action_at) for session in sessions]
+        return [self.pause(session["id"], action_at, mode) for session in sessions]
 
     def resume_all(self, at: datetime | None = None, session_ids: list[UUID] | None = None) -> list[dict]:
         action_at = at or datetime.now(timezone.utc)

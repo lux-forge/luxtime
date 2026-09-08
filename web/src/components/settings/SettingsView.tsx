@@ -180,8 +180,8 @@ export default function SettingsView({ settings, onUpdate, appStatus }: Props) {
             <Toggle checked={settings.stopOnLock} onChange={v => update('stopOnLock', v)} />
           </SettingRow>
           <SettingRow
-            label="Stop active timers when the computer sleeps"
-            sub="Also applies on hibernate"
+            label="Put active timers to sleep when the computer sleeps"
+            sub="Pauses tracking with a distinct sleep state; also applies on hibernate"
           >
             <Toggle checked={settings.stopOnSleep} onChange={v => update('stopOnSleep', v)} />
           </SettingRow>
@@ -221,7 +221,7 @@ export default function SettingsView({ settings, onUpdate, appStatus }: Props) {
                 />
                 <span className="text-xs" style={{ color: 'var(--color-muted)' }}>minutes</span>
               </div>
-              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>then: stop running tasks</span>
+              <span className="text-xs" style={{ color: 'var(--color-muted)' }}>then: pause as away and prompt on return</span>
             </div>
           </div>
         </Section>

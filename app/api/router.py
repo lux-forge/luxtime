@@ -22,6 +22,7 @@ from app.models.api import (
     SegmentPatch,
     SessionAction,
     SessionPatch,
+    SessionPause,
     SessionResponse,
     SessionStart,
     SessionStatus,
@@ -141,8 +142,8 @@ def correct_segment(
 
 
 @router.post("/sessions/{session_id}/pause", response_model=SessionResponse)
-def pause_session(session_id: UUID, payload: SessionAction, database: DatabaseDependency) -> dict:
-    return SessionService(database).pause(session_id, payload.at)
+def pause_session(session_id: UUID, payload: SessionPause, database: DatabaseDependency) -> dict:
+    return SessionService(database).pause(session_id, payload.at, payload.mode)
 
 
 @router.post("/sessions/{session_id}/resume", response_model=SessionResponse)
@@ -161,8 +162,8 @@ def active_sessions(database: DatabaseDependency) -> list[dict]:
 
 
 @router.post("/active/pause-all", response_model=BulkActionResponse)
-def pause_all(payload: SessionAction, database: DatabaseDependency) -> dict:
-    return {"sessions": SessionService(database).pause_all(payload.at)}
+def pause_all(payload: SessionPause, database: DatabaseDependency) -> dict:
+    return {"sessions": SessionService(database).pause_all(payload.at, payload.mode)}
 
 
 @router.post("/active/resume-all", response_model=BulkActionResponse)

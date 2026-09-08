@@ -64,7 +64,9 @@ def test_health_projects_and_concurrent_session_lifecycle(database):
 
         paused_first = sessions.pause(first_session["id"], at=base + timedelta(hours=2))
         assert paused_first["status"] == "paused"
+        assert paused_first["pause_mode"] == "manual"
         resumed_first = sessions.resume(first_session["id"], at=base + timedelta(hours=2, minutes=30))
+        assert resumed_first["pause_mode"] is None
         assert len(resumed_first["segments"]) == 2
         stopped_first = sessions.stop(first_session["id"], at=base + timedelta(hours=3))
         assert stopped_first["total_seconds"] == 2 * 3600 + 30 * 60

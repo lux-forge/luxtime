@@ -1,4 +1,5 @@
 export type SessionStatus = 'running' | 'paused' | 'stopped'
+export type PauseMode = 'manual' | 'away' | 'sleep'
 export type WorkTypeName = 'Development' | 'Design' | 'Research' | 'Operations' | 'Admin' | 'Business'
 export type InsightPeriod = 'week' | 'month' | 'quarter' | 'year' | 'all'
 
@@ -37,6 +38,7 @@ export type ApiSession = {
   description: string
   hourly_rate: string | number
   status: SessionStatus
+  pause_mode: PauseMode | null
   started_at: string
   stopped_at: string | null
   stop_reason: string | null

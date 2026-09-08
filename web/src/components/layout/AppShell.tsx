@@ -20,19 +20,39 @@ type Props = {
   onResume: (id: string) => void
 }
 
-function PauseIcon() {
+type IconProps = { size?: number }
+
+function PauseIcon({ size = 12 }: IconProps) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+    <svg aria-hidden="true" viewBox="0 0 16 16" width={size} height={size} fill="currentColor">
       <rect x="3" y="2.5" width="3.5" height="11" rx="0.75" />
       <rect x="9.5" y="2.5" width="3.5" height="11" rx="0.75" />
     </svg>
   )
 }
 
-function PlayIcon() {
+function PlayIcon({ size = 12 }: IconProps) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+    <svg aria-hidden="true" viewBox="0 0 16 16" width={size} height={size} fill="currentColor">
       <path d="M4 2.75a1 1 0 0 1 1.52-.85l8 5.25a1 1 0 0 1 0 1.7l-8 5.25A1 1 0 0 1 4 13.25V2.75Z" />
+    </svg>
+  )
+}
+
+function SleepIcon({ size = 12 }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" width={size} height={size} fill="currentColor">
+      <path d="M11.7 11.55A5.6 5.6 0 0 1 5.16 4.2a5.6 5.6 0 1 0 6.54 7.35Z" />
+      <path d="M9.5 2h4v1.2l-2.25 2.6h2.35V7h-4.2V5.8l2.25-2.6H9.5V2Z" />
+    </svg>
+  )
+}
+
+function AwayIcon({ size = 12 }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="6" cy="4" r="2" />
+      <path d="M2.75 13c.35-2.5 1.45-4 3.25-4s2.9 1.5 3.25 4M11 8h3M12.5 6.5 14 8l-1.5 1.5" />
     </svg>
   )
 }
@@ -63,7 +83,7 @@ export default function AppShell({ view, setView, activeTimers, applicationName,
       {isTracking && (
         <div
           className="px-3 py-3"
-          style={{ borderBottom: '1px solid var(--color-border)', background: 'rgba(52,211,153,0.05)' }}
+          style={{ borderBottom: '1px solid var(--color-border)' }}
         >
           <div
             className="px-1 mb-2 uppercase"
@@ -74,18 +94,39 @@ export default function AppShell({ view, setView, activeTimers, applicationName,
           <div className="flex flex-col gap-2">
             {activeTimers.map(timer => {
               const isPaused = timer.status === 'paused'
-              const accent = isPaused ? 'var(--color-amber)' : 'var(--color-active)'
+              const mode = isPaused ? timer.pauseMode ?? 'manual' : 'running'
+              const presentation = {
+                running: { label: 'Running', accent: 'var(--color-active)', background: <PlayIcon size={48} /> },
+                manual: { label: 'Paused', accent: 'var(--color-amber)', background: <PauseIcon size={48} /> },
+                sleep: { label: 'Sleeping', accent: '#60A5FA', background: <SleepIcon size={48} /> },
+                away: { label: 'Away', accent: '#F59E0B', background: <AwayIcon size={48} /> },
+              }[mode]
               return (
                 <div
                   key={timer.id}
-                  className="rounded px-2.5 py-2 cursor-pointer transition-colors"
-                  style={{ background: 'var(--color-surface-raised)' }}
+                  className="relative overflow-hidden rounded px-2.5 py-2 cursor-pointer transition-colors"
+                  style={{
+                    background: `color-mix(in srgb, ${presentation.accent} 7%, var(--color-surface-raised))`,
+                    border: `1px solid color-mix(in srgb, ${presentation.accent} 22%, var(--color-border))`,
+                  }}
                   onClick={() => setView('timer')}
-                  title="Open Timer"
+                  title={`Open Timer — ${presentation.label}`}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="absolute pointer-events-none"
+                    style={{
+                      color: presentation.accent,
+                      opacity: 0.1,
+                      right: 28,
+                      top: 3,
+                      transform: 'rotate(-7deg)',
+                    }}
+                  >
+                    {presentation.background}
+                  </span>
+                  <div className="relative flex items-center gap-2 min-w-0" style={{ zIndex: 1 }}>
                     <span
-                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${isPaused ? '' : 'pulse-dot'}`}
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${mode === 'running' ? 'pulse-dot' : ''}`}
                       style={{ background: timer.projectColor }}
                     />
                     <span className="text-xs font-medium truncate flex-1" style={{ color: 'var(--color-text)' }}>
@@ -95,7 +136,7 @@ export default function AppShell({ view, setView, activeTimers, applicationName,
                       type="button"
                       className="w-6 h-6 rounded flex items-center justify-center shrink-0 transition-colors"
                       style={{
-                        color: accent,
+                        color: isPaused ? 'var(--color-active)' : 'var(--color-amber)',
                         background: isPaused ? 'rgba(52,211,153,0.12)' : 'rgba(251,191,36,0.12)',
                         border: `1px solid ${isPaused ? 'rgba(52,211,153,0.2)' : 'rgba(251,191,36,0.2)'}`,
                       }}
@@ -111,10 +152,13 @@ export default function AppShell({ view, setView, activeTimers, applicationName,
                     </button>
                   </div>
                   <div
-                    className="mt-1.5 pl-3.5 text-xs"
-                    style={{ fontFamily: 'var(--font-mono)', color: accent }}
+                    className="relative mt-1.5 pl-3.5 text-xs flex items-center gap-1.5"
+                    style={{ fontFamily: 'var(--font-mono)', color: presentation.accent, zIndex: 1 }}
                   >
-                    {formatElapsed(timer.elapsed)}
+                    <span>{formatElapsed(timer.elapsed)}</span>
+                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      {presentation.label}
+                    </span>
                   </div>
                 </div>
               )

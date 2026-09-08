@@ -55,7 +55,7 @@ export const api = {
   active: () => request<ApiSession[]>('/active'),
   start: (payload: { project_id: string; work_type: WorkTypeName; description: string }) =>
     request<ApiSession>('/sessions/start', { method: 'POST', body: json(payload) }),
-  pause: (id: string) => request<ApiSession>(`/sessions/${id}/pause`, { method: 'POST', body: '{}' }),
+  pause: (id: string) => request<ApiSession>(`/sessions/${id}/pause`, { method: 'POST', body: json({ mode: 'manual' }) }),
   resume: (id: string) => request<ApiSession>(`/sessions/${id}/resume`, { method: 'POST', body: '{}' }),
   stop: (id: string) => request<ApiSession>(`/sessions/${id}/stop`, { method: 'POST', body: '{}' }),
   updateSession: (id: string, payload: { project_id?: string; description?: string }) =>

@@ -13,8 +13,9 @@ Schema files execute lexically:
 4. `030_work_session_segments.sql` — interruption-safe tracked intervals
 5. `040_settings.sql` — singleton application settings
 6. `041_branding_settings.sql` — idempotent application name and accent settings
-7. `050_indexes.sql` — lookup, active-state, and open-segment indexes
-8. `060_views.sql` — deterministic project/session totals
+7. `042_session_pause_modes.sql` — idempotent manual, away, and sleep pause modes
+8. `050_indexes.sql` — lookup, active-state, and open-segment indexes
+9. `060_views.sql` — deterministic project/session totals
 
 `seed/defaults.sql` creates only product defaults. It never creates projects or
 sessions.
@@ -25,6 +26,14 @@ Existing databases can adopt the branding columns without a destructive rebuild:
 docker compose -f .\docker\compose.yml exec -T postgres `
   psql -U luxtime -d luxtime -v ON_ERROR_STOP=1 `
   -f /db/schema/041_branding_settings.sql
+```
+
+Apply pause modes to an existing database without rebuilding tracked data:
+
+```powershell
+docker compose -f .\docker\compose.yml exec -T postgres `
+  psql -U luxtime -d luxtime -v ON_ERROR_STOP=1 `
+  -f /db/schema/042_session_pause_modes.sql
 ```
 
 ## Rebuild and verify

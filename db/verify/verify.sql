@@ -50,6 +50,15 @@ BEGIN
     ) THEN
         RAISE EXCEPTION 'Paused and stopped sessions cannot have open segments';
     END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM luxtime.work_sessions
+        WHERE (status = 'paused' AND pause_mode NOT IN ('manual', 'away', 'sleep'))
+           OR (status <> 'paused' AND pause_mode IS NOT NULL)
+    ) THEN
+        RAISE EXCEPTION 'Session pause modes do not match session status';
+    END IF;
 END;
 $$;
 

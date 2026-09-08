@@ -20,6 +20,7 @@ import pystray  # noqa: E402
 
 from tray.api_client import LuxTimeApi  # noqa: E402
 from tray.idle import IdleDetector, windows_idle_seconds  # noqa: E402
+from tray.power import PowerEvent, WindowsPowerMonitor  # noqa: E402
 from tray.runtime import TrayAlreadyRunningError, TrayRuntime  # noqa: E402
 
 log = logger.bind(component="luxtime.tray")
@@ -37,6 +38,10 @@ class TrayApplication:
         self.connection_reported: bool | None = None
         self.idle_detector = IdleDetector()
         self.idle_error_reported = False
+        self.away_prompted_ids: set[str] = set()
+        self.pending_sleep_at: datetime.datetime | None = None
+        self.power_lock = threading.Lock()
+        self.power_monitor = WindowsPowerMonitor(self._on_power_event)
         self.lock = threading.Lock()
         self.stopping = threading.Event()
         self.icon = pystray.Icon(
@@ -63,8 +68,14 @@ class TrayApplication:
             return "● App unavailable"
         running = sum(1 for session in self.active if session["status"] == "running")
         paused = sum(1 for session in self.active if session["status"] == "paused")
+        sleeping = sum(1 for session in self.active if session.get("pause_mode") == "sleep")
+        away = sum(1 for session in self.active if session.get("pause_mode") == "away")
         if running:
             return f"● Tracking · {running} project{'s' if running != 1 else ''}"
+        if sleeping:
+            return f"☾ Sleeping · {sleeping} project{'s' if sleeping != 1 else ''}"
+        if away:
+            return f"⌁ Away · {away} project{'s' if away != 1 else ''}"
         if paused:
             return f"Ⅱ Paused · {paused} project{'s' if paused != 1 else ''}"
         return "● Running · No active work"
@@ -106,9 +117,10 @@ class TrayApplication:
         session_items = []
         for session in active:
             action = "pause" if session["status"] == "running" else "resume"
+            action_label = "Pause" if action == "pause" else "Wake" if session.get("pause_mode") == "sleep" else "Resume"
             session_items.append(
                 pystray.MenuItem(
-                    f"{action.title()} {session['project']}",
+                    f"{action_label} {session['project']}",
                     session_action(str(session["id"]), action),
                 )
             )
@@ -152,8 +164,12 @@ class TrayApplication:
         active = self.api.active()
         projects = self.api.projects()
         settings = self.api.settings()
-        idle_stopped = self._apply_idle_policy(settings, active)
-        if idle_stopped:
+        sleep_paused = self._apply_sleep_policy(settings, active)
+        if sleep_paused:
+            status = self.api.status()
+            active = self.api.active()
+        away_changed = self._apply_away_policy(settings, active)
+        if away_changed:
             status = self.api.status()
             active = self.api.active()
         application_name = settings.get("application_name", "LuxTime")
@@ -184,10 +200,13 @@ class TrayApplication:
         self.icon.menu = self._build_menu()
         self.icon.update_menu()
 
-    def _apply_idle_policy(self, settings: dict, active: list[dict]) -> bool:
+    def _apply_away_policy(self, settings: dict, active: list[dict]) -> bool:
         enabled = bool(settings.get("idle_detection", False))
         threshold_minutes = int(settings.get("idle_threshold", 20))
         running = [session for session in active if session.get("status") == "running"]
+        away = [session for session in active if session.get("pause_mode") == "away"]
+        away_ids = {str(session["id"]) for session in away}
+        self.away_prompted_ids.intersection_update(away_ids)
         if not enabled:
             self.idle_detector.check(
                 enabled=False,
@@ -195,8 +214,8 @@ class TrayApplication:
                 has_running_sessions=bool(running),
                 idle_seconds=0,
             )
-            return False
-        if not running:
+            return self._prompt_to_resume_away(away, idle_seconds=0, threshold_minutes=threshold_minutes)
+        if not running and not away:
             return False
         try:
             idle_seconds = windows_idle_seconds()
@@ -217,46 +236,122 @@ class TrayApplication:
             idle_seconds=idle_seconds,
         )
         if trigger is None:
-            return False
+            return self._prompt_to_resume_away(away, idle_seconds, threshold_minutes)
 
-        stopped = 0
+        paused = 0
         cutoff_at = trigger.cutoff_at.isoformat()
         for session in running:
             try:
                 self.api.action(
                     str(session["id"]),
-                    "stop",
+                    "pause",
                     at=cutoff_at,
-                    reason="idle",
+                    mode="away",
                 )
-                stopped += 1
+                paused += 1
             except Exception as error:  # noqa: BLE001 - retry remaining work on the next poll
                 log.warning(
-                    "Could not stop an idle session",
+                    "Could not pause an away session",
                     session_id=str(session.get("id")),
                     error_type=type(error).__name__,
                 )
 
-        if stopped != len(running):
-            return stopped > 0
+        if paused != len(running):
+            return paused > 0
 
         self.idle_detector.mark_handled()
         log.info(
-            "Stopped running sessions after Windows input became idle",
+            "Paused running sessions after Windows input became idle",
             idle_seconds=round(trigger.idle_seconds),
             idle_threshold_minutes=threshold_minutes,
-            session_count=stopped,
-            stopped_at=cutoff_at,
+            session_count=paused,
+            paused_at=cutoff_at,
         )
-        try:
-            self.icon.notify(
-                f"Stopped {stopped} running task{'s' if stopped != 1 else ''} after "
-                f"{threshold_minutes} minutes without mouse or keyboard input.",
-                self.application_name,
-            )
-        except Exception:  # noqa: BLE001 - notifications are optional
-            pass
         return True
+
+    def _prompt_to_resume_away(
+        self,
+        away: list[dict],
+        idle_seconds: float,
+        threshold_minutes: int,
+    ) -> bool:
+        unprompted = [session for session in away if str(session["id"]) not in self.away_prompted_ids]
+        if not unprompted or idle_seconds >= threshold_minutes * 60:
+            return False
+
+        count = len(unprompted)
+        noun = "timer" if count == 1 else "timers"
+        response = ctypes.windll.user32.MessageBoxW(
+            None,
+            f"Mouse or keyboard activity was detected.\n\nUnpause {count} away {noun}?",
+            "Unpause timer?",
+            0x00000004 | 0x00000020 | 0x00010000 | 0x00040000,
+        )
+        self.away_prompted_ids.update(str(session["id"]) for session in unprompted)
+        if response != 6:
+            log.info("Away resume prompt declined", session_count=count)
+            return False
+
+        resumed = 0
+        for session in unprompted:
+            try:
+                self.api.action(str(session["id"]), "resume")
+                resumed += 1
+            except Exception as error:  # noqa: BLE001 - leave failed sessions safely paused
+                log.warning(
+                    "Could not resume an away session",
+                    session_id=str(session.get("id")),
+                    error_type=type(error).__name__,
+                )
+        log.info("Away sessions resumed after user confirmation", session_count=resumed)
+        return resumed > 0
+
+    def _on_power_event(self, event: PowerEvent) -> None:
+        if event == "suspend":
+            with self.power_lock:
+                if self.pending_sleep_at is None:
+                    self.pending_sleep_at = datetime.datetime.now(datetime.timezone.utc)
+            log.info("Windows suspend detected")
+        else:
+            log.info("Windows resume detected")
+
+    def _apply_sleep_policy(self, settings: dict, active: list[dict]) -> bool:
+        with self.power_lock:
+            suspend_at = self.pending_sleep_at
+        if suspend_at is None:
+            return False
+        if not settings.get("stop_on_sleep", False):
+            with self.power_lock:
+                self.pending_sleep_at = None
+            return False
+
+        running = [session for session in active if session.get("status") == "running"]
+        paused = 0
+        for session in running:
+            try:
+                self.api.action(
+                    str(session["id"]),
+                    "pause",
+                    at=suspend_at.isoformat(),
+                    mode="sleep",
+                )
+                paused += 1
+            except Exception as error:  # noqa: BLE001 - retry after resume or on the next poll
+                log.warning(
+                    "Could not put a session to sleep",
+                    session_id=str(session.get("id")),
+                    error_type=type(error).__name__,
+                )
+
+        if paused == len(running):
+            with self.power_lock:
+                self.pending_sleep_at = None
+            log.info(
+                "Paused running sessions for Windows sleep",
+                session_count=paused,
+                paused_at=suspend_at.isoformat(),
+            )
+        return paused > 0
 
     def _poll(self) -> None:
         while not self.stopping.is_set():
@@ -322,12 +417,18 @@ class TrayApplication:
 
     def run(self) -> None:
         self.runtime.watch_for_exit(self._exit_tray)
+        try:
+            self.power_monitor.start()
+            log.info("Windows power-event monitoring started")
+        except Exception as error:  # noqa: BLE001 - tray and away detection remain useful
+            log.warning("Windows power-event monitoring is unavailable", error_type=type(error).__name__)
         threading.Thread(target=self._poll, name="luxtime-tray-poll", daemon=True).start()
         log.info("LuxTime tray started")
         try:
             self.icon.run()
         finally:
             self.stopping.set()
+            self.power_monitor.close()
             self.runtime.close()
             log.info("LuxTime tray stopped")
 

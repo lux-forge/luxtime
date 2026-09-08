@@ -25,6 +25,7 @@ export type ActiveTimer = {
   elapsed: number
   rate: number
   status: 'running' | 'paused'
+  pauseMode: 'manual' | 'away' | 'sleep' | null
 }
 
 export type HistoryEntry = {
@@ -106,6 +107,7 @@ const toActiveTimer = (session: ApiSession): ActiveTimer => ({
   elapsed: session.total_seconds,
   rate: Number(session.hourly_rate),
   status: session.status === 'paused' ? 'paused' : 'running',
+  pauseMode: session.pause_mode,
 })
 
 const toHistoryEntry = (session: ApiSession): HistoryEntry => {
