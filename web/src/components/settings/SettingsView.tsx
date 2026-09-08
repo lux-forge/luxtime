@@ -1,13 +1,10 @@
 import type { ReactNode } from 'react'
-import type { Settings, ActiveTimer, ApplicationStatus } from '../../App'
-import ActiveBar from '../layout/ActiveBar'
+import type { Settings, ApplicationStatus } from '../../App'
 
 type Props = {
   settings: Settings
   onUpdate: <K extends keyof Settings>(key: K, value: Settings[K]) => void
   appStatus: ApplicationStatus
-  activeTimers: ActiveTimer[]
-  onNavigateTimer: () => void
 }
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -74,7 +71,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-export default function SettingsView({ settings, onUpdate, appStatus, activeTimers, onNavigateTimer }: Props) {
+export default function SettingsView({ settings, onUpdate, appStatus }: Props) {
   function update<K extends keyof Settings>(key: K, value: Settings[K]) {
     onUpdate(key, value)
   }
@@ -91,8 +88,6 @@ export default function SettingsView({ settings, onUpdate, appStatus, activeTime
 
   return (
     <div className="h-full flex flex-col">
-      <ActiveBar activeTimers={activeTimers} onNavigateTimer={onNavigateTimer} />
-
       <div className="flex-1 overflow-auto px-8 py-6" style={{ maxWidth: 640 }}>
         <h1 className="text-base font-semibold mb-8" style={{ color: 'var(--color-text)' }}>Settings</h1>
 

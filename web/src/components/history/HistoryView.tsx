@@ -1,18 +1,15 @@
 import { useState } from 'react'
-import type { HistoryEntry, ActiveTimer } from '../../App'
+import type { HistoryEntry } from '../../App'
 import { formatDuration, calcValue } from '../../App'
-import ActiveBar from '../layout/ActiveBar'
 
 type Period = 'today' | 'week' | 'month' | 'all'
 
 type Props = {
   history: HistoryEntry[]
-  activeTimers: ActiveTimer[]
   onDelete: (id: string) => void
-  onNavigateTimer: () => void
 }
 
-export default function HistoryView({ history, activeTimers, onDelete, onNavigateTimer }: Props) {
+export default function HistoryView({ history, onDelete }: Props) {
   const [period, setPeriod] = useState<Period>('week')
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
 
@@ -55,8 +52,6 @@ export default function HistoryView({ history, activeTimers, onDelete, onNavigat
 
   return (
     <div className="h-full flex flex-col">
-      <ActiveBar activeTimers={activeTimers} onNavigateTimer={onNavigateTimer} />
-
       <div className="flex-1 overflow-auto px-8 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

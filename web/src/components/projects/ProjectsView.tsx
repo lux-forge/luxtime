@@ -1,17 +1,14 @@
 import { useState } from 'react'
-import type { Project, ActiveTimer } from '../../App'
+import type { Project } from '../../App'
 import { formatDuration } from '../../App'
-import ActiveBar from '../layout/ActiveBar'
 
 type Props = {
   projects: Project[]
   onCreate: (name: string, code: string, color: string) => void
   onUpdate: (id: string, values: Partial<Pick<Project, 'name' | 'code' | 'color' | 'active'>>) => void
-  activeTimers: ActiveTimer[]
-  onNavigateTimer: () => void
 }
 
-export default function ProjectsView({ projects, onCreate, onUpdate, activeTimers, onNavigateTimer }: Props) {
+export default function ProjectsView({ projects, onCreate, onUpdate }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [showAdd, setShowAdd] = useState(false)
@@ -54,8 +51,6 @@ export default function ProjectsView({ projects, onCreate, onUpdate, activeTimer
 
   return (
     <div className="h-full flex flex-col">
-      <ActiveBar activeTimers={activeTimers} onNavigateTimer={onNavigateTimer} />
-
       <div className="flex-1 overflow-auto px-8 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

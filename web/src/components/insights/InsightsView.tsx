@@ -1,8 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import type { ActiveTimer } from '../../App'
 import type { ApiInsights, InsightPeriod } from '../../api/types'
 import { formatDuration } from '../../App'
-import ActiveBar from '../layout/ActiveBar'
 
 type Period = Exclude<InsightPeriod, 'all'>
 
@@ -10,8 +8,6 @@ type Props = {
   insights: ApiInsights
   period: Period
   onPeriodChange: (period: Period) => void
-  activeTimers: ActiveTimer[]
-  onNavigateTimer: () => void
 }
 
 // ─── Data derivation ────────────────────────────────────────────────────────
@@ -328,7 +324,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
 
 // ─── Main view ────────────────────────────────────────────────────────────────
 
-export default function InsightsView({ insights, period, onPeriodChange, activeTimers, onNavigateTimer }: Props) {
+export default function InsightsView({ insights, period, onPeriodChange }: Props) {
   const periods: { id: Period; label: string }[] = [
     { id: 'week', label: 'Week' },
     { id: 'month', label: 'Month' },
@@ -359,8 +355,6 @@ export default function InsightsView({ insights, period, onPeriodChange, activeT
 
   return (
     <div className="h-full flex flex-col">
-      <ActiveBar activeTimers={activeTimers} onNavigateTimer={onNavigateTimer} />
-
       <div className="flex-1 overflow-auto px-8 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

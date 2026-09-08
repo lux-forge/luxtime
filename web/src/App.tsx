@@ -289,7 +289,7 @@ export default function App() {
 
   return (
     <div className="h-full flex overflow-hidden" style={{ background: 'var(--color-background)', color: 'var(--color-text)', fontFamily: 'var(--font-sans)' }}>
-      <AppShell view={view} setView={setView} activeTimers={activeTimers} appStatus={appStatus} />
+      <AppShell view={view} setView={setView} activeTimers={activeTimers} />
       <div className="flex-1 flex flex-col overflow-hidden">
         {error && (
           <div className="px-4 py-2 text-xs flex items-center" role="alert" style={{ background: 'rgba(248,113,113,0.12)', color: 'var(--color-danger)', borderBottom: '1px solid rgba(248,113,113,0.2)' }}>
@@ -306,23 +306,19 @@ export default function App() {
               onAddAnother={() => setDialog('addProject')} />
           )}
           {view === 'history' && (
-            <HistoryView history={history} activeTimers={activeTimers}
-              onDelete={id => void runMutation(() => api.deleteSession(id))}
-              onNavigateTimer={() => setView('timer')} />
+            <HistoryView history={history}
+              onDelete={id => void runMutation(() => api.deleteSession(id))} />
           )}
           {view === 'insights' && insights && (
-            <InsightsView insights={insights} period={insightPeriod} onPeriodChange={setInsightPeriod}
-              activeTimers={activeTimers} onNavigateTimer={() => setView('timer')} />
+            <InsightsView insights={insights} period={insightPeriod} onPeriodChange={setInsightPeriod} />
           )}
           {view === 'projects' && (
             <ProjectsView projects={projects}
               onCreate={(name, code, color) => void runMutation(() => api.createProject({ name, code: code || undefined, color }))}
-              onUpdate={(id, values) => void runMutation(() => api.updateProject(id, values))}
-              activeTimers={activeTimers} onNavigateTimer={() => setView('timer')} />
+              onUpdate={(id, values) => void runMutation(() => api.updateProject(id, values))} />
           )}
           {view === 'settings' && (
-            <SettingsView settings={settings} onUpdate={updateSetting} appStatus={appStatus}
-              activeTimers={activeTimers} onNavigateTimer={() => setView('timer')} />
+            <SettingsView settings={settings} onUpdate={updateSetting} appStatus={appStatus} />
           )}
         </main>
       </div>
