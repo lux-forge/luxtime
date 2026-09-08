@@ -71,7 +71,9 @@ one native, global confirmation prompt to resume all away-paused sessions.
 Windows suspend notifications similarly pause running sessions in `sleep` mode;
 they remain asleep until explicitly resumed. Native Windows session-change
 notifications pause running sessions in `lock` mode at the lock timestamp;
-unlocking does not resume them automatically.
+unlocking opens one native Windows task dialog for all locked sessions. The
+user can resume them, stop them without adding locked time, or skip and leave
+them paused.
 
 ### Windows service
 

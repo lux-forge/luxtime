@@ -19,6 +19,7 @@ from PIL import Image, ImageDraw  # noqa: E402
 import pystray  # noqa: E402
 
 from tray.api_client import LuxTimeApi  # noqa: E402
+from tray.dialogs import prompt_for_locked_tasks  # noqa: E402
 from tray.idle import IdleDetector, windows_idle_seconds  # noqa: E402
 from tray.power import PowerEvent, WindowsPowerMonitor  # noqa: E402
 from tray.runtime import TrayAlreadyRunningError, TrayRuntime  # noqa: E402
@@ -42,6 +43,7 @@ class TrayApplication:
         self.away_prompted_ids: set[str] = set()
         self.pending_sleep_at: datetime.datetime | None = None
         self.pending_lock_at: datetime.datetime | None = None
+        self.pending_unlock_prompt = False
         self.power_lock = threading.Lock()
         self.power_monitor = WindowsPowerMonitor(self._on_power_event)
         self.session_monitor = WindowsSessionMonitor(self._on_session_event)
@@ -176,6 +178,10 @@ class TrayApplication:
             active = self.api.active()
         lock_paused = self._apply_lock_policy(settings, active)
         if lock_paused:
+            status = self.api.status()
+            active = self.api.active()
+        unlock_changed = self._apply_unlock_policy(settings, active)
+        if unlock_changed:
             status = self.api.status()
             active = self.api.active()
         away_changed = self._apply_away_policy(settings, active)
@@ -332,6 +338,8 @@ class TrayApplication:
                     self.pending_lock_at = datetime.datetime.now(datetime.timezone.utc)
             log.info("Windows session lock detected")
         else:
+            with self.power_lock:
+                self.pending_unlock_prompt = True
             log.info("Windows session unlock detected")
 
     def _apply_lock_policy(self, settings: dict, active: list[dict]) -> bool:
@@ -371,6 +379,60 @@ class TrayApplication:
                 paused_at=locked_at.isoformat(),
             )
         return paused > 0
+
+    def _apply_unlock_policy(self, settings: dict, active: list[dict]) -> bool:
+        with self.power_lock:
+            prompt_pending = self.pending_unlock_prompt
+            lock_pending = self.pending_lock_at is not None
+        if not prompt_pending:
+            return False
+
+        locked = [session for session in active if session.get("pause_mode") == "lock"]
+        if not locked:
+            if not lock_pending:
+                with self.power_lock:
+                    self.pending_unlock_prompt = False
+            return False
+
+        with self.power_lock:
+            self.pending_unlock_prompt = False
+        if not settings.get("resume_prompt", True):
+            log.info("Locked sessions left paused because the unlock prompt is disabled")
+            return False
+
+        try:
+            action = prompt_for_locked_tasks(
+                settings.get("application_name", "LuxTime"),
+                locked,
+            )
+        except Exception as error:  # noqa: BLE001 - failed prompts must leave timers safely paused
+            log.warning(
+                "Could not show the locked-session prompt",
+                error_type=type(error).__name__,
+            )
+            return False
+
+        if action == "skip":
+            log.info("Locked-session prompt skipped", session_count=len(locked))
+            return False
+
+        changed = 0
+        for session in locked:
+            try:
+                if action == "resume":
+                    self.api.action(str(session["id"]), "resume")
+                else:
+                    self.api.action(str(session["id"]), "stop", reason="lock")
+                changed += 1
+            except Exception as error:  # noqa: BLE001 - failed sessions remain safely paused
+                log.warning(
+                    f"Could not {action} a locked session",
+                    session_id=str(session.get("id")),
+                    error_type=type(error).__name__,
+                )
+        outcome = "resumed" if action == "resume" else "stopped"
+        log.info(f"Locked sessions {outcome} after user confirmation", session_count=changed)
+        return changed > 0
 
     def _apply_sleep_policy(self, settings: dict, active: list[dict]) -> bool:
         with self.power_lock:

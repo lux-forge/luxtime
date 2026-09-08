@@ -185,6 +185,12 @@ export default function SettingsView({ settings, onUpdate, appStatus }: Props) {
           >
             <Toggle checked={settings.stopOnSleep} onChange={v => update('stopOnSleep', v)} />
           </SettingRow>
+          <SettingRow
+            label="Ask what to do with locked timers after unlock"
+            sub="Shows a native Windows prompt to resume, stop, or skip them"
+          >
+            <Toggle checked={settings.resumePrompt} onChange={v => update('resumePrompt', v)} />
+          </SettingRow>
         </Section>
 
         {/* Idle Detection */}

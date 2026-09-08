@@ -160,5 +160,6 @@ wake until resumed from their controller.
 The tray registers for native Windows session-change notifications. When
 **Lock active timers when Windows locks** is enabled, locking the current
 session pauses running sessions at the event timestamp in `lock` mode. They
-remain paused after unlock until resumed from their controller. The tray must
-be running for all per-user policies.
+remain paused after unlock while one native Windows prompt offers **Resume
+timers**, **Stop timers**, and **Skip for now**. Skipping leaves them locked and
+paused. The tray must be running for all per-user policies.
