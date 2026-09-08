@@ -8,6 +8,11 @@ $nodeModules = Join-Path $webRoot 'node_modules'
 $viteCache = Join-Path $webRoot '.vite'
 $buildRuntime = Join-Path $repositoryRoot '.runtime\build'
 $pnpmStore = Join-Path $buildRuntime 'pnpm-store'
+$versionMatch = (Select-String -LiteralPath (Join-Path $repositoryRoot 'pyproject.toml') -Pattern '^version = "([0-9]+\.[0-9]+\.[0-9]+)"$').Matches
+if ($versionMatch.Count -ne 1) {
+    throw 'Could not determine the LuxTime version from pyproject.toml.'
+}
+$applicationVersion = $versionMatch[0].Groups[1].Value
 
 function Remove-LuxTimeBuildPath {
     param([Parameter(Mandatory)][string]$Path)
@@ -66,5 +71,6 @@ finally {
     Pop-Location
 }
 
-docker compose -f (Join-Path $repositoryRoot 'docker\compose.yml') build --no-cache
+Write-Output "Building LuxTime $applicationVersion container image..."
+docker compose -f (Join-Path $repositoryRoot 'docker\compose.yml') build --no-cache --build-arg "LUXTIME_VERSION=$applicationVersion"
 if ($LASTEXITCODE -ne 0) { throw 'Container build failed.' }

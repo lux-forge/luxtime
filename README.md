@@ -81,6 +81,7 @@ From a source checkout, the equivalent manual commands are:
 ```powershell
 pwsh .\scripts\run.ps1                   # interactive Docker/build menu
 pwsh .\scripts\start.ps1                 # build and start the production-shaped stack
+pwsh .\scripts\run.ps1 -Action Publish -ReleaseVersion 0.2.0 # version, build, and deploy locally
 pwsh .\scripts\stop.ps1 -Confirm:$false  # stop intentionally
 pwsh .\scripts\restart.ps1 -Confirm:$false
 pwsh .\scripts\status.ps1                # check service, Docker, API, and tray state
@@ -92,6 +93,14 @@ won't immediately restart LuxTime; `start.ps1` clears that marker.
 The menu's full build is non-interactive. It reinstalls frontend dependencies
 from scratch using a disposable local pnpm store, runs the explicit test suite,
 and rebuilds Docker without cached application layers.
+
+Choose **Publish versioned build live** to enter a new numeric `x.y.z` release
+version, run that clean build, and replace the running application container.
+The version is written to `pyproject.toml` and `app/__init__.py`, embedded as an
+OCI image label, and reused by the installer build. In this local-first project,
+"live" means the production-shaped instance at <http://127.0.0.1:52020>.
+No remote host, image registry, Git tag, or GitHub release pipeline is currently
+configured, so this action deliberately does not publish anything externally.
 
 ## Personalise the application
 

@@ -25,6 +25,10 @@ RUN python -m pip install --no-cache-dir --target /build/site-packages .
 
 FROM python:3.13-slim AS runtime
 
+ARG LUXTIME_VERSION=0.0.0
+LABEL org.opencontainers.image.title="LuxTime" \
+      org.opencontainers.image.version="$LUXTIME_VERSION"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/opt/luxtime/site-packages
