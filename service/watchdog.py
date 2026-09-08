@@ -162,8 +162,6 @@ class LuxTimeWatchdog:
         result = self._run_docker(
             [
                 "compose",
-                "--project-directory",
-                str(REPOSITORY_ROOT),
                 "-f",
                 str(self.config.compose_file),
                 "up",

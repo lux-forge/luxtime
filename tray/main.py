@@ -258,8 +258,6 @@ class TrayApplication:
             [
                 self._docker_executable(),
                 "compose",
-                "--project-directory",
-                str(REPOSITORY_ROOT),
                 "-f",
                 str(REPOSITORY_ROOT / "docker" / "compose.yml"),
                 "down",

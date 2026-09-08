@@ -18,7 +18,7 @@ $dockerCommand = Get-Command docker -ErrorAction SilentlyContinue
 if (-not $dockerCommand) {
     throw 'Docker CLI was not found. The intentional-stop marker was set, but the runtime could not be stopped.'
 }
-& $dockerCommand.Source compose --project-directory $repositoryRoot -f $composeFile down
+& $dockerCommand.Source compose -f $composeFile down
 if ($LASTEXITCODE -ne 0) {
     throw "LuxTime shutdown failed with exit code $LASTEXITCODE."
 }

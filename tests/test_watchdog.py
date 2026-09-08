@@ -70,8 +70,6 @@ def test_recovery_uses_production_compose_file_and_configured_engine(tmp_path: P
     assert watchdog.ensure_running(docker_ready=True) is True
     assert calls[0] == [
         "compose",
-        "--project-directory",
-        str(watchdog_module.REPOSITORY_ROOT),
         "-f",
         str(config.compose_file),
         "up",

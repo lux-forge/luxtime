@@ -23,7 +23,7 @@ if (Test-Path -LiteralPath $stopMarker) {
     Remove-Item -LiteralPath $stopMarker -Force
 }
 
-$arguments = @('compose', '--project-directory', $repositoryRoot, '-f', $composeFile, 'up', '-d')
+$arguments = @('compose', '-f', $composeFile, 'up', '-d')
 if (-not $NoBuild) {
     $arguments += '--build'
 }
@@ -51,7 +51,7 @@ do {
     if (-not $healthy) { Start-Sleep -Seconds 2 }
 } while (-not $healthy -and (Get-Date) -lt $deadline)
 
-& $dockerCommand.Source compose --project-directory $repositoryRoot -f $composeFile ps
+& $dockerCommand.Source compose -f $composeFile ps
 if (-not $healthy) {
     throw "LuxTime containers started, but the API did not become healthy within $WaitSeconds seconds."
 }

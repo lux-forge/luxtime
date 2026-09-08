@@ -16,9 +16,28 @@ type Props = {
   setView: (v: View) => void
   activeTimers: ActiveTimer[]
   appStatus: ApplicationStatus
+  onPause: (id: string) => void
+  onResume: (id: string) => void
 }
 
-export default function AppShell({ view, setView, activeTimers, appStatus }: Props) {
+function PauseIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+      <rect x="3" y="2.5" width="3.5" height="11" rx="0.75" />
+      <rect x="9.5" y="2.5" width="3.5" height="11" rx="0.75" />
+    </svg>
+  )
+}
+
+function PlayIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+      <path d="M4 2.75a1 1 0 0 1 1.52-.85l8 5.25a1 1 0 0 1 0 1.7l-8 5.25A1 1 0 0 1 4 13.25V2.75Z" />
+    </svg>
+  )
+}
+
+export default function AppShell({ view, setView, activeTimers, appStatus, onPause, onResume }: Props) {
   const isTracking = activeTimers.length > 0
   const statusLabel = {
     connecting: 'Engine connecting',
@@ -58,28 +77,64 @@ export default function AppShell({ view, setView, activeTimers, appStatus }: Pro
       {/* Active tracking compact info */}
       {isTracking && (
         <div
-          className="px-4 py-3 cursor-pointer"
+          className="px-3 py-3"
           style={{ borderBottom: '1px solid var(--color-border)', background: 'rgba(52,211,153,0.05)' }}
-          onClick={() => setView('timer')}
         >
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className={activeTimers.some(timer => timer.status === 'running') ? 'pulse-dot' : ''} style={{ color: statusColor, fontSize: 8 }}>●</span>
-            <span className="text-xs font-medium" style={{ color: statusColor }}>
-              {activeTimers.length === 1 ? activeTimers[0].project : `${activeTimers.length} sessions`}
-            </span>
+          <div
+            className="px-1 mb-2 uppercase"
+            style={{ color: 'var(--color-muted)', fontSize: 9, letterSpacing: '0.12em', fontWeight: 600 }}
+          >
+            {activeTimers.length === 1 ? 'Active task' : `${activeTimers.length} active tasks`}
           </div>
-          {activeTimers.map(t => (
-            <div key={t.id} className="flex items-center justify-between">
-              {activeTimers.length > 1 && (
-                <span className="text-xs truncate" style={{ color: 'var(--color-muted-bright)', maxWidth: 80 }}>
-                  {t.project}
-                </span>
-              )}
-              <span className="text-xs" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-active)' }}>
-                {t.status === 'paused' ? 'Paused · ' : ''}{formatElapsed(t.elapsed)}
-              </span>
-            </div>
-          ))}
+          <div className="flex flex-col gap-2">
+            {activeTimers.map(timer => {
+              const isPaused = timer.status === 'paused'
+              const accent = isPaused ? 'var(--color-amber)' : 'var(--color-active)'
+              return (
+                <div
+                  key={timer.id}
+                  className="rounded px-2.5 py-2 cursor-pointer transition-colors"
+                  style={{ background: 'var(--color-surface-raised)' }}
+                  onClick={() => setView('timer')}
+                  title="Open Timer"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${isPaused ? '' : 'pulse-dot'}`}
+                      style={{ background: timer.projectColor }}
+                    />
+                    <span className="text-xs font-medium truncate flex-1" style={{ color: 'var(--color-text)' }}>
+                      {timer.project}
+                    </span>
+                    <button
+                      type="button"
+                      className="w-6 h-6 rounded flex items-center justify-center shrink-0 transition-colors"
+                      style={{
+                        color: accent,
+                        background: isPaused ? 'rgba(52,211,153,0.12)' : 'rgba(251,191,36,0.12)',
+                        border: `1px solid ${isPaused ? 'rgba(52,211,153,0.2)' : 'rgba(251,191,36,0.2)'}`,
+                      }}
+                      aria-label={`${isPaused ? 'Resume' : 'Pause'} ${timer.project}`}
+                      title={isPaused ? 'Resume task' : 'Pause task'}
+                      onClick={event => {
+                        event.stopPropagation()
+                        if (isPaused) onResume(timer.id)
+                        else onPause(timer.id)
+                      }}
+                    >
+                      {isPaused ? <PlayIcon /> : <PauseIcon />}
+                    </button>
+                  </div>
+                  <div
+                    className="mt-1.5 pl-3.5 text-xs"
+                    style={{ fontFamily: 'var(--font-mono)', color: accent }}
+                  >
+                    {formatElapsed(timer.elapsed)}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
