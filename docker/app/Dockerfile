@@ -19,7 +19,7 @@ RUN pnpm build
 FROM python:3.13-slim AS python-build
 
 WORKDIR /build
-COPY --from=repo pyproject.toml README.md ./
+COPY --from=repo pyproject.toml README.md VERSION ./
 COPY --from=repo app/ ./app/
 RUN python -m pip install --no-cache-dir --target /build/site-packages .
 

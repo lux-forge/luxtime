@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "luxtime"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Local-first time and effort accounting for LuxForge"
 readme = "README.md"
 license = "MIT"
@@ -24,6 +24,9 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

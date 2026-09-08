@@ -1,5 +1,7 @@
 # LuxTime
 
+Current release: **0.1.0**
+
 ## What is this?
 
 LuxTime is LuxForge's single-user, local time and effort accounting tool.
@@ -35,6 +37,12 @@ application — available after sign-in without a manual start step — rather
 than something you remember to launch from a terminal.
 
 ## How do I install it?
+
+- **Just want to use it?** Grab `LuxTime-Setup.msi` from the
+  [latest release](https://github.com/lux-forge/luxtime/releases/latest) and
+  run it - see below.
+- **Want to build it yourself?** See [build/README.md](build/README.md).
+- **Want to contribute?** See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Recommended:** run the packaged `LuxTime-Setup.msi` (built from
 [installer/](installer/)). It bundles its own Python runtime, so nothing

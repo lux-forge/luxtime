@@ -35,7 +35,7 @@ if (-not $SkipPythonRuntime) {
     & (Join-Path $PSScriptRoot 'build-python-runtime.ps1') -StagingDir $pythonRuntimeDir
 }
 
-$pyprojectVersion = (Select-String -LiteralPath (Join-Path $repositoryRoot 'pyproject.toml') -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+$luxTimeVersion = (Get-Content -LiteralPath (Join-Path $repositoryRoot 'VERSION') -Raw).Trim()
 
 $outDir = Split-Path -Parent $OutFile
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
@@ -47,7 +47,7 @@ Push-Location $PSScriptRoot
 try {
     wix build 'Product.wxs' 'Components.wxs' `
         -ext WixToolset.Util.wixext -ext WixToolset.UI.wixext `
-        -d LuxTimeVersion=$pyprojectVersion `
+        -d LuxTimeVersion=$luxTimeVersion `
         -d PayloadDir=$payloadDir `
         -d PythonRuntimeDir=$pythonRuntimeDir `
         -arch x64 `

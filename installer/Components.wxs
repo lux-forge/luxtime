@@ -17,6 +17,7 @@
       <Files Include="$(var.PayloadDir)\docs\**" Subdirectory="docs" />
       <Files Include="$(var.PayloadDir)\pyproject.toml" />
       <Files Include="$(var.PayloadDir)\README.md" />
+      <Files Include="$(var.PayloadDir)\VERSION" />
     </ComponentGroup>
 
     <!-- Empty, ACL'd folders the service/tray write into at runtime as a
