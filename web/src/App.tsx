@@ -289,7 +289,13 @@ export default function App() {
 
   return (
     <div className="h-full flex overflow-hidden" style={{ background: 'var(--color-background)', color: 'var(--color-text)', fontFamily: 'var(--font-sans)' }}>
-      <AppShell view={view} setView={setView} activeTimers={activeTimers} />
+      <AppShell
+        view={view}
+        setView={setView}
+        activeTimers={activeTimers}
+        onPause={id => void runMutation(() => api.pause(id))}
+        onResume={id => void runMutation(() => api.resume(id))}
+      />
       <div className="flex-1 flex flex-col overflow-hidden">
         {error && (
           <div className="px-4 py-2 text-xs flex items-center" role="alert" style={{ background: 'rgba(248,113,113,0.12)', color: 'var(--color-danger)', borderBottom: '1px solid rgba(248,113,113,0.2)' }}>
